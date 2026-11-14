@@ -1,25 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { Bell, BellOff, ExternalLink, Star } from 'lucide-react';
 import axiosInstance from '../utils/axiosInstance';
-import { SOCKET_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useFetch } from '../hooks/useFetch';
 import { useQuotes } from '../hooks/useQuotes';
-import PriceChart from '../components/PriceChart';
-import LightweightCandlestickChart from '../components/LightweightCandlestickChart';
+import ChartPanel from '../components/ChartPanel';
+import { useLiveQuote } from '../hooks/useLiveQuote';
 import { Badge, ChangeValue, EmptyState, ErrorState, Skeleton, Tabs } from '../components/ui/ui';
 import DataTable from '../components/ui/DataTable';
-import { withIndicators } from '../utils/indicators';
 import { isInWatchlist, toggleWatchlist } from '../utils/watchlist';
 import { displaySymbol, exchangeLabel, formatDateTime, formatMarketCap, formatNumber, formatPrice, formatTime, formatVolume, getCurrencyCode, NA } from '../utils/format';
 import '../styles/workspace.css';
-import './StockDetails.css';
+import '../styles/stock.css';
 
-const RANGES = ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y', 'MAX'].map((r) => ({ id: r, label: r }));
 const PAGE_TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'chart', label: 'Chart' },
@@ -129,33 +125,21 @@ function StockPage({ symbol }) {
   const { addNotification } = useNotification();
   const enc = encodeURIComponent(symbol);
 
-  const quote = useFetch(`/api/stocks/quote/${enc}`);
+  const lq = useLiveQuote(symbol);
+  const q = lq.quote;
+  const live = lq.live;
+  const connected = lq.connected;
   const fund = useFetch(`/api/stocks/fundamentals/${enc}`);
   const news = useFetch(`/api/stocks/news/${enc}`);
   const subs = useFetch('/api/stocks/subscriptions', { enabled: isAuthenticated });
 
   const [tab, setTab] = useState('overview');
-  const [range, setRange] = useState('1M');
-  const [mode, setMode] = useState('line');
-  const [ind, setInd] = useState({ sma: true, bb: false, rsi: false });
-  const [live, setLive] = useState(null);
-  const [connected, setConnected] = useState(false);
   const [watching, setWatching] = useState(() => isInWatchlist(symbol));
   const [alertOverride, setAlertOverride] = useState(null);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const chart = useFetch(`/api/stocks/chart/${enc}?range=${range}`);
 
   const alertsOn = alertOverride ?? (subs.data || []).some((s) => s.symbol === symbol);
 
-  useEffect(() => {
-    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
-    socket.on('connect', () => { setConnected(true); socket.emit('subscribe', symbol); });
-    socket.on('disconnect', () => setConnected(false));
-    socket.on('priceUpdate', (d) => { if (d.symbol === symbol) setLive(d); });
-    return () => { socket.emit('unsubscribe', symbol); socket.disconnect(); };
-  }, [symbol]);
-
-  const q = quote.data ? { ...quote.data, ...(live || {}) } : null;
   const f = fund.data;
   const name = f?.name || q?.name || symbol;
   const currency = f?.currency || getCurrencyCode(symbol);
@@ -174,8 +158,6 @@ function StockPage({ symbol }) {
 
   const relatedSymbols = useMemo(() => (f?.related || []).map((r) => r.symbol), [f]);
   const related = useQuotes(relatedSymbols);
-
-  const candleData = useMemo(() => (chart.data?.points ? withIndicators(chart.data.points) : []), [chart.data]);
 
   const onWatch = () => {
     const now = toggleWatchlist(symbol);
@@ -197,12 +179,12 @@ function StockPage({ symbol }) {
     }
   };
 
-  if (quote.error && !quote.data) {
+  if (lq.error && !q) {
     return (
       <div className="pg">
         <section className="panel">
-          <ErrorState title={`Could not load ${displaySymbol(symbol)}`} onRetry={quote.refresh}>
-            {quote.error} The symbol may not exist, or the data provider is temporarily unavailable. <Link to="/analyzer" className="shell-link-btn">Back to Stock Explorer</Link>
+          <ErrorState title={`Could not load ${displaySymbol(symbol)}`} onRetry={lq.refresh}>
+            {lq.error} The symbol may not exist, or the data provider is temporarily unavailable. <Link to="/analyzer" className="shell-link-btn">Back to Stock Explorer</Link>
           </ErrorState>
         </section>
       </div>
@@ -211,42 +193,6 @@ function StockPage({ symbol }) {
 
   const state = MARKET_STATE[live?.marketState];
   const profile = f?.profile;
-
-  const chartPanel = (full) => (
-    <section className="panel sd-o1" aria-label="Price chart">
-      <div className="panel-head">
-        <Tabs tabs={RANGES} value={range} onChange={setRange} label="Time range" />
-        {full && (
-          <span className="sd-chart-tools">
-            <Tabs tabs={[{ id: 'line', label: 'Line' }, { id: 'candles', label: 'Candles' }]} value={mode} onChange={setMode} label="Chart type" />
-            {mode === 'candles' && (
-              <>
-                <label className="sd-check"><input type="checkbox" checked={ind.sma} onChange={(e) => setInd({ ...ind, sma: e.target.checked })} /> SMA 20</label>
-                <label className="sd-check"><input type="checkbox" checked={ind.bb} onChange={(e) => setInd({ ...ind, bb: e.target.checked })} /> Bollinger</label>
-                <label className="sd-check"><input type="checkbox" checked={ind.rsi} onChange={(e) => setInd({ ...ind, rsi: e.target.checked })} /> RSI 14</label>
-              </>
-            )}
-          </span>
-        )}
-      </div>
-      <div className="sd-chart-body">
-        {chart.error && !chart.data ? (
-          <ErrorState title="Chart unavailable" onRetry={chart.refresh}>{chart.error}</ErrorState>
-        ) : chart.loading || !chart.data || chart.data.range !== range ? (
-          <Skeleton width="100%" height={full ? 460 : 320} style={{ display: 'block' }} />
-        ) : full && mode === 'candles' ? (
-          <div style={{ height: 460 }}>
-            <LightweightCandlestickChart key={`${symbol}-${range}`} data={candleData} symbol={symbol} showSMA={ind.sma} showBollinger={ind.bb} showRSI={ind.rsi} intraday={range === '1D' || range === '1W'} />
-          </div>
-        ) : (
-          <PriceChart points={chart.data.points} range={range} symbol={symbol} previousClose={chart.data.previousClose} showVolume={full} height={full ? 460 : 320} />
-        )}
-      </div>
-      <div className="panel-note">
-        {chart.data ? `${chart.data.points.length} points, ${chart.data.interval} interval. ` : ''}Prices: Yahoo Finance, may be delayed. Times shown in your local time zone.
-      </div>
-    </section>
-  );
 
   return (
     <div className="pg">
@@ -292,7 +238,7 @@ function StockPage({ symbol }) {
       {tab === 'overview' && (
         <div className="pg-grid pg-grid--2-1">
           <div className="sd-col">
-            {chartPanel(false)}
+            <div className="sd-o1"><ChartPanel symbol={symbol} defaultRange="1M" /></div>
 
             <section className="panel sd-o3" aria-label="About the company">
               <div className="panel-head"><h2 className="panel-title">About</h2></div>
@@ -354,7 +300,7 @@ function StockPage({ symbol }) {
         </div>
       )}
 
-      {tab === 'chart' && chartPanel(true)}
+      {tab === 'chart' && <ChartPanel symbol={symbol} full defaultRange="6M" />}
 
       {tab === 'fundamentals' && (
         fund.error && !f ? (

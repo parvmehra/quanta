@@ -195,3 +195,16 @@ Observed at runtime (confirms the static audit):
 - `market-pulse` reports `price: 0` when a provider call fails (the new index strip treats this as "unavailable", not as a price).
 - Existing pages (Hero, StockAnalyzer, StockDetails, TradingTerminal, Portfolio) still use hard-coded emerald/dark-green colours and their own card styles; they are restyled in Phases 2–5.
 - Not verified at runtime: email/SMS delivery (simulated mode), Gemini, Google sign-in, socket price ticks (poller interval defect S-list), CSV import end-to-end, trade execution (to be replaced in Phase 6A).
+
+---
+
+## 15. Status of the critical findings (2026-11-14)
+
+| ID | Status |
+|---|---|
+| S1 client-authoritative trading | Fixed: server-side engine (`docs/TRADING_ENGINE.md`) |
+| S2 user data tracked in Git | Fixed: untracked, ignored, history reset |
+| S3 unlimited free wallet credit | Fixed: capped, simulated, ledger-recorded deposits only |
+| S4 JWT secret fallback | Fixed: server refuses to start without a strong secret |
+| S7 verification codes in responses | Fixed for production; still returned in development |
+| S5 socket / chat access, S6 Google sign-in fallback, S8 unauthenticated advisor and cache-clear, S9 JSON store | Open |

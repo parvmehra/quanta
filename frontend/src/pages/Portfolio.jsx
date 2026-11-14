@@ -1,677 +1,153 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
-import axios from "axios";
-import { io } from "socket.io-client";
-import { API_BASE_URL, SOCKET_URL } from "../config";
-import { Plus, TrendingUp, TrendingDown, Eye, Trash2, Edit3, Loader, X, Upload, FileText, CheckCircle, AlertCircle } from "lucide-react";
-import "./Portfolio.css";
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Upload } from 'lucide-react';
+import axiosInstance from '../utils/axiosInstance';
+import { useFetch } from '../hooks/useFetch';
+import { useQuotes } from '../hooks/useQuotes';
+import DataTable from '../components/ui/DataTable';
+import ImportModal from '../components/ImportModal';
+import { Allocation, StatStrip } from '../components/PortfolioSummary';
+import { Badge, ChangeValue, EmptyState, ErrorState, Tabs } from '../components/ui/ui';
+import { aggregateLots, totalsByCurrency, valuePositions } from '../utils/portfolioMath';
+import { displaySymbol, formatDateTime, formatMoney, formatNumber, formatPrice, formatTime, NA } from '../utils/format';
+import '../styles/workspace.css';
 
-const BROKER_CONFIGS = {
-  zerodha: {
-    name: "Zerodha (Kite)",
-    columns: { symbol: "tradingsymbol", shares: "quantity", avgPrice: "average_price", name: "instrument" },
-    instructions: "Export your holdings from Kite → Portfolio → Holdings → Download CSV",
-    sampleHeader: "tradingsymbol,quantity,average_price,instrument",
-  },
-  groww: {
-    name: "Groww",
-    columns: { symbol: "symbol", shares: "quantity", avgPrice: "avg_price", name: "company_name" },
-    instructions: "Go to Groww → Stocks → Holdings → Download Statement as CSV",
-    sampleHeader: "symbol,quantity,avg_price,company_name",
-  },
-  angelone: {
-    name: "Angel One",
-    columns: { symbol: "scrip_name", shares: "quantity", avgPrice: "buy_avg", name: "scrip_name" },
-    instructions: "Open Angel One → Portfolio → Holdings → Export to CSV",
-    sampleHeader: "scrip_name,quantity,buy_avg",
-  },
-  upstox: {
-    name: "Upstox",
-    columns: { symbol: "symbol", shares: "quantity", avgPrice: "avg_price", name: "company" },
-    instructions: "Open Upstox → Portfolio → Holdings → Download CSV",
-    sampleHeader: "symbol,quantity,avg_price,company",
-  },
-  generic: {
-    name: "Generic CSV",
-    columns: { symbol: "symbol", shares: "shares", avgPrice: "avg_price", name: "name" },
-    instructions: "Your CSV must have columns: symbol, shares, avg_price. Optionally: name",
-    sampleHeader: "symbol,shares,avg_price,name",
-  },
-};
+const KIND_LABEL = { BUY: 'Buy', SELL: 'Sell', IMPORT: 'Import' };
 
-const parseCSV = (text) => {
-  const lines = text.trim().split("\n").map((l) => l.trim()).filter(Boolean);
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/['"]/g, ""));
-  return lines.slice(1).map((line) => {
-    const values = line.split(",").map((v) => v.trim().replace(/['"]/g, ""));
-    const obj = {};
-    headers.forEach((h, i) => {
-      obj[h] = values[i] || "";
-    });
-    return obj;
-  });
-};
+const pnlCell = (amount, pct, symbol) => (
+  amount === null || amount === undefined ? NA : (
+    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+      <span className={amount > 0 ? 'positive' : amount < 0 ? 'negative' : ''}>{amount > 0 ? '+' : ''}{formatMoney(amount, symbol)}</span>
+      {pct !== undefined && <ChangeValue value={pct} />}
+    </span>
+  )
+);
 
-const Portfolio = () => {
-  const [portfolioItems, setPortfolioItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const socketRef = useRef(null);
+export default function Portfolio() {
+  const posRes = useFetch('/api/positions', { interval: 30_000 });
+  const ledger = useFetch('/api/ledger?limit=200');
+  const [importOpen, setImportOpen] = useState(false);
+  const [allocBy, setAllocBy] = useState('symbol');
+  const [allocCurrency, setAllocCurrency] = useState(null);
+  const [sectors, setSectors] = useState({});
 
-  const [showModal, setShowModal] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentItemId, setCurrentItemId] = useState(null);
-  const [formData, setFormData] = useState({ symbol: "", shares: "", avgPrice: "", name: "", currentPrice: "" });
-
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [selectedBroker, setSelectedBroker] = useState("zerodha");
-  const [importFile, setImportFile] = useState(null);
-  const [importPreview, setImportPreview] = useState([]);
-  const [importLoading, setImportLoading] = useState(false);
-  const [importError, setImportError] = useState(null);
-  const [importSuccess, setImportSuccess] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef(null);
-
-  const fetchPortfolio = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/api/protfolio`, { withCredentials: true });
-      const items = response.data || [];
-      setPortfolioItems(items);
-      setError(null);
-
-      if (items.length > 0) {
-        fetchLivePrices(items);
-      }
-    } catch (err) {
-      console.error("Error fetching portfolio:", err);
-      setError("Failed to load portfolio data. Please check the connection.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchLivePrices = async (items) => {
-    try {
-      const uniqueSymbols = [...new Set(items.map(item => item.symbol).filter(Boolean))];
-      if (uniqueSymbols.length === 0) return;
-
-      const res = await axios.get(`${API_BASE_URL}/api/stocks/quotes?symbols=${uniqueSymbols.join(',')}`);
-      const liveQuotes = res.data;
-
-      if (liveQuotes && typeof liveQuotes === 'object') {
-        setPortfolioItems(prev =>
-          prev.map(item => {
-            const liveData = liveQuotes[item.symbol];
-            if (liveData && liveData.price) {
-              return { ...item, currentPrice: liveData.price };
-            }
-            return item;
-          })
-        );
-      }
-    } catch (err) {
-      console.warn("Failed to fetch live prices for portfolio:", err.message);
-    }
-  };
-
-  useEffect(() => {
-    fetchPortfolio();
-
-    const socket = io(SOCKET_URL);
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      console.log('🔌 Portfolio WebSocket connected');
-    });
-
-    socket.on('priceUpdate', (data) => {
-      setPortfolioItems((prev) => 
-        prev.map(item => 
-          item.symbol === data.symbol 
-            ? { ...item, currentPrice: data.price } 
-            : item
-        )
-      );
-    });
-
-    return () => {
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, []);
-
-  const subscribedSymbols = useRef(new Set());
-  useEffect(() => {
-    if (socketRef.current && portfolioItems.length > 0) {
-      portfolioItems.forEach(item => {
-        if (item.symbol && !subscribedSymbols.current.has(item.symbol)) {
-          socketRef.current.emit('subscribe', item.symbol);
-          subscribedSymbols.current.add(item.symbol);
-        }
-      });
-    }
-  }, [portfolioItems.length]);
-
-  const totalValue = (portfolioItems || []).reduce(
-    (sum, item) => sum + (item.shares || 0) * (item.currentPrice || item.avgPrice || 0),
-    0
+  const lots = useMemo(() => (posRes.data?.positions || []).map((p) => ({ symbol: p.symbol, shares: p.quantity, avgPrice: p.avgCost, name: p.name })), [posRes.data]);
+  const symbols = useMemo(() => lots.map((l) => l.symbol), [lots]);
+  const quotes = useQuotes(symbols, { interval: 30_000 });
+  const positions = useMemo(() => valuePositions(aggregateLots(lots), quotes.quotes), [lots, quotes.quotes]);
+  const totals = useMemo(
+    () => Object.values(totalsByCurrency(positions)).sort((a, b) => (a.currency === 'USD' ? -1 : b.currency === 'USD' ? 1 : 0)),
+    [positions],
   );
-
-  const totalCost = (portfolioItems || []).reduce(
-    (sum, item) => sum + (item.shares || 0) * (item.avgPrice || 0),
-    0
-  );
-
-  const totalGainLoss = totalValue - totalCost;
-  const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const openAddModal = () => {
-    setIsEditing(false);
-    setFormData({ symbol: "", shares: "", avgPrice: "", name: "", currentPrice: "" });
-    setShowModal(true);
-  };
-
-  const openEditModal = (item) => {
-    setIsEditing(true);
-    setCurrentItemId(item._id);
-    setFormData({
-      symbol: item.symbol || "",
-      shares: item.shares || "",
-      avgPrice: item.avgPrice || "",
-      name: item.name || "",
-      currentPrice: item.currentPrice || "",
-    });
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setIsEditing(false);
-    setCurrentItemId(null);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const payload = {
-      symbol: formData.symbol.toUpperCase(),
-      shares: Number(formData.shares),
-      avgPrice: Number(formData.avgPrice),
-      name: formData.name,
-      currentPrice: Number(formData.currentPrice),
-    };
-
-    try {
-      if (isEditing) {
-        await axios.put(`${API_BASE_URL}/api/protfolio/${currentItemId}`, payload, { withCredentials: true });
-      } else {
-        await axios.post(`${API_BASE_URL}/api/protfolio`, payload, { withCredentials: true });
-      }
-      fetchPortfolio();
-      closeModal();
-    } catch (err) {
-      console.error("Error saving stock:", err);
-      setError("Failed to save stock. Please try again.");
-    }
-  };
-
-  const removeStock = async (id) => {
-    try {
-      await axios.delete(`${API_BASE_URL}/api/protfolio/${id}`, { withCredentials: true });
-      setPortfolioItems((prev) => prev.filter((item) => item._id !== id));
-    } catch (err) {
-      console.error("Error removing stock:", err);
-      setError("Failed to remove stock. Please try again.");
-    }
-  };
-
-  const openImportModal = () => {
-    setShowImportModal(true);
-    setImportFile(null);
-    setImportPreview([]);
-    setImportError(null);
-    setImportSuccess(null);
-    setSelectedBroker("zerodha");
-  };
-
-  const closeImportModal = () => {
-    setShowImportModal(false);
-    setImportFile(null);
-    setImportPreview([]);
-    setImportError(null);
-    setImportSuccess(null);
-  };
-
-  const processFile = (file) => {
-    if (!file) return;
-    if (!file.name.endsWith(".csv")) {
-      setImportError("Please upload a .csv file");
-      return;
-    }
-    setImportFile(file);
-    setImportError(null);
-    setImportSuccess(null);
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const text = e.target.result;
-        const rows = parseCSV(text);
-        if (rows.length === 0) {
-          setImportError("CSV file is empty or has no data rows.");
-          return;
-        }
-
-        const config = BROKER_CONFIGS[selectedBroker];
-        const cols = config.columns;
-
-        const mapped = rows
-          .map((row) => ({
-            symbol: row[cols.symbol] || "",
-            shares: parseFloat(row[cols.shares]) || 0,
-            avgPrice: parseFloat(row[cols.avgPrice]) || 0,
-            name: row[cols.name] || row[cols.symbol] || "",
-            currentPrice: 0,
-          }))
-          .filter((item) => item.symbol && item.shares > 0);
-
-        if (mapped.length === 0) {
-          setImportError(`Could not parse any valid holdings. Make sure your CSV has the correct columns for ${config.name}.\nExpected: ${config.sampleHeader}`);
-          return;
-        }
-
-        setImportPreview(mapped);
-      } catch (err) {
-        setImportError("Failed to parse CSV file. Please check the format.");
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const handleFileChange = (e) => {
-    processFile(e.target.files[0]);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    processFile(e.dataTransfer.files[0]);
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const confirmImport = async () => {
-    if (importPreview.length === 0) return;
-    setImportLoading(true);
-    setImportError(null);
-
-    try {
-      await axios.post(`${API_BASE_URL}/api/protfolio/bulk`, { holdings: importPreview }, { withCredentials: true });
-      setImportSuccess(`Successfully imported ${importPreview.length} holdings!`);
-      setImportPreview([]);
-      setImportFile(null);
-      fetchPortfolio();
-    } catch (err) {
-      console.error("Import error:", err);
-      setImportError("Failed to import holdings. Please try again.");
-    } finally {
-      setImportLoading(false);
-    }
-  };
-
-  const downloadSampleCSV = () => {
-    const config = BROKER_CONFIGS[selectedBroker];
-    const header = config.sampleHeader;
-    const sampleRows = [
-      "AAPL,10,150.75,Apple Inc.",
-      "GOOGL,5,2800.00,Alphabet Inc.",
-      "TSLA,8,210.50,Tesla Inc.",
-    ];
-    const csvContent = [header, ...sampleRows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sample_${selectedBroker}_portfolio.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const currencies = totals.map((t) => t.currency);
+  const activeCurrency = allocCurrency && currencies.includes(allocCurrency) ? allocCurrency : currencies[0];
+  const totalValueByCurrency = Object.fromEntries(totals.map((t) => [t.currency, t.value]));
 
   useEffect(() => {
-    if (importFile) {
-      processFile(importFile);
-    }
-  }, [selectedBroker]);
+    if (allocBy !== 'sector') return undefined;
+    let cancelled = false;
+    const missing = symbols.filter((s) => !(s in sectors)).slice(0, 25);
+    (async () => {
+      for (let i = 0; i < missing.length; i += 4) {
+        const batch = missing.slice(i, i + 4);
+        const results = await Promise.all(batch.map((s) => axiosInstance.get(`/api/stocks/fundamentals/${encodeURIComponent(s)}`, { timeout: 20000 }).then((r) => r.data?.profile?.sector || null).catch(() => null)));
+        if (cancelled) return;
+        setSectors((prev) => ({ ...prev, ...Object.fromEntries(batch.map((s, k) => [s, results[k]])) }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [allocBy, symbols, sectors]);
+
+  const trades = (ledger.data?.entries || []).filter((e) => ['BUY', 'SELL', 'IMPORT'].includes(e.kind));
+
+  const holdingColumns = [
+    { key: 'symbol', label: 'Symbol', sortable: true, render: (r) => (
+      <span className="sym"><Link to={`/stock/${encodeURIComponent(r.symbol)}`}>{displaySymbol(r.symbol)}</Link>{r.name && r.name !== r.symbol && <small>{r.name}</small>}</span>
+    ) },
+    { key: 'shares', label: 'Shares', align: 'right', hideBelow: 'sm', sortable: true, render: (r) => formatNumber(r.shares, 4) },
+    { key: 'avgCost', label: 'Avg cost', align: 'right', hideBelow: 'md', render: (r) => formatPrice(r.avgCost, r.symbol) },
+    { key: 'price', label: 'Last', align: 'right', render: (r) => formatPrice(r.price, r.symbol) },
+    { key: 'value', label: 'Value', align: 'right', sortable: true, render: (r) => formatMoney(r.value, r.symbol) },
+    { key: 'weight', label: 'Weight', align: 'right', hideBelow: 'lg', sortValue: (r) => (r.value && totalValueByCurrency[r.currency] ? r.value / totalValueByCurrency[r.currency] : null), sortable: true, render: (r) => (r.value && totalValueByCurrency[r.currency] ? `${((r.value / totalValueByCurrency[r.currency]) * 100).toFixed(1)}%` : NA) },
+    { key: 'pnl', label: 'Unrealised P&L', align: 'right', sortable: true, render: (r) => pnlCell(r.pnl, r.pnlPct, r.symbol) },
+    { key: 'dayPnl', label: 'Today', align: 'right', hideBelow: 'md', sortable: true, render: (r) => pnlCell(r.dayPnl, undefined, r.symbol) },
+    { key: 'actions', label: '', align: 'right', render: (r) => <Link to={`/trade/${encodeURIComponent(r.symbol)}`} className="row-actions"><span>Trade</span></Link> },
+  ];
+
+  const tradeColumns = [
+    { key: 'createdAt', label: 'Date', render: (r) => formatDateTime(r.createdAt) },
+    { key: 'kind', label: 'Type', render: (r) => <Badge tone={r.kind === 'BUY' ? 'positive' : r.kind === 'SELL' ? 'negative' : 'neutral'}>{KIND_LABEL[r.kind]}</Badge> },
+    { key: 'symbol', label: 'Symbol', render: (r) => <Link to={`/stock/${encodeURIComponent(r.symbol)}`} className="sym-link"><strong>{displaySymbol(r.symbol)}</strong></Link> },
+    { key: 'quantity', label: 'Qty', align: 'right', render: (r) => formatNumber(r.quantity, 4) },
+    { key: 'price', label: 'Price', align: 'right', render: (r) => formatPrice(r.price, r.symbol) },
+    { key: 'fee', label: 'Fee', align: 'right', hideBelow: 'md', render: (r) => (r.fee ? formatMoney(r.fee, r.symbol) : NA) },
+    { key: 'realizedPnl', label: 'Realised P&L', align: 'right', hideBelow: 'sm', render: (r) => (r.realizedPnl == null ? NA : pnlCell(r.realizedPnl, undefined, r.symbol)) },
+    { key: 'amount', label: 'Wallet change', align: 'right', hideBelow: 'sm', render: (r) => (r.kind === 'IMPORT' ? 'None' : `${r.amount > 0 ? '+' : ''}${formatMoney(r.amount, r.symbol)}`) },
+  ];
+
+  const refresh = () => { posRes.refresh(); ledger.refresh(); quotes.refresh(); };
 
   return (
-    <div className="portfolio-page">
-      <div className="container">
-        <div className="portfolio-header">
-          <div className="portfolio-title">
-            <h1>My Portfolio</h1>
-            <p>Track your investments and monitor performance with live data</p>
-          </div>
-          <div className="portfolio-actions-row">
-            <button className="btn btn-secondary import-btn" onClick={openImportModal}>
-              <Upload size={18} /> Import from Broker
-            </button>
-            <button className="btn btn-primary add-stock-btn" onClick={openAddModal}>
-              <Plus size={20} /> Add Stock
-            </button>
-          </div>
+    <div className="pg">
+      <header className="pg-head">
+        <div>
+          <h1 className="pg-title">Portfolio</h1>
+          <p className="pg-sub">Simulated holdings. Values use live prices from Yahoo Finance, which may be delayed.</p>
         </div>
+        <span style={{ display: 'inline-flex', gap: 'var(--sp-2)' }}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setImportOpen(true)}><Upload size={14} /> Import CSV</button>
+          <Link to="/trade" className="btn btn-accent btn-sm">Trade</Link>
+        </span>
+      </header>
 
-        <div className="portfolio-summary">
-          <div className="summary-card">
-            <h3>Total Portfolio Value</h3>
-            <div className="summary-value">
-              ${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      {posRes.error && !posRes.data ? (
+        <section className="panel"><ErrorState title="Could not load your portfolio" onRetry={posRes.refresh}>{posRes.error}</ErrorState></section>
+      ) : totals.length > 0 ? (
+        totals.map((t) => <StatStrip key={t.currency} totals={t} realized={posRes.data?.realized?.[t.currency] || null} />)
+      ) : (
+        !posRes.loading && (
+          <section className="panel">
+            <EmptyState
+              title="No holdings yet"
+              action={<span style={{ display: 'inline-flex', gap: 'var(--sp-2)' }}><Link to="/trade" className="btn btn-accent btn-sm">Open the trading terminal</Link><button type="button" className="btn btn-secondary btn-sm" onClick={() => setImportOpen(true)}>Import from CSV</button></span>}
+            >
+              Buy a stock in the trading terminal, or import holdings from a broker CSV.
+            </EmptyState>
+          </section>
+        )
+      )}
+
+      {positions.length > 0 && (
+        <div className="pg-grid pg-grid--3-1">
+          <section className="panel" aria-label="Holdings">
+            <div className="panel-head"><h2 className="panel-title">Holdings</h2><span className="pg-meta">{quotes.updatedAt ? `Prices updated ${formatTime(quotes.updatedAt)}` : ''}</span></div>
+            <DataTable columns={holdingColumns} rows={positions} rowKey={(r) => r.symbol} loading={quotes.loading && positions.every((p) => p.price === null)} defaultSort={{ key: 'value', dir: 'desc' }} dense />
+            <div className="panel-note">Average cost includes buy fees. Currencies are never converted or added together.</div>
+          </section>
+          <section className="panel" aria-label="Allocation">
+            <div className="panel-head">
+              <h2 className="panel-title">Allocation</h2>
+              <span style={{ display: 'inline-flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                <Tabs tabs={[{ id: 'symbol', label: 'Stock' }, { id: 'sector', label: 'Sector' }]} value={allocBy} onChange={setAllocBy} label="Group by" />
+                {currencies.length > 1 && <Tabs tabs={currencies.map((c) => ({ id: c, label: c }))} value={activeCurrency} onChange={setAllocCurrency} label="Currency" />}
+              </span>
             </div>
-          </div>
-          <div className="summary-card">
-            <h3>Total Gain/Loss</h3>
-            <div className={`summary-value ${totalGainLoss >= 0 ? "positive" : "negative"}`}>
-              {totalGainLoss >= 0 ? "+" : "-"}${Math.abs(totalGainLoss).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <div className={`summary-percent ${totalGainLoss >= 0 ? "positive" : "negative"}`}>
-              {totalGainLoss >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-              {totalGainLossPercent.toFixed(2)}%
-            </div>
-          </div>
+            <Allocation positions={positions} currency={activeCurrency} by={allocBy} sectors={sectors} />
+            {allocBy === 'sector' && <div className="panel-note">Sectors come from Yahoo Finance company profiles; funds and unknown symbols appear as Unclassified.</div>}
+          </section>
         </div>
+      )}
 
-        {showModal && (
-          <div className="modal-overlay" onClick={closeModal}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3>{isEditing ? "Edit Stock" : "Add Stock to Portfolio"}</h3>
-                <button onClick={closeModal} className="close-modal-btn">
-                  <X size={24} />
-                </button>
-              </div>
-              <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label>Stock Symbol</label>
-                  <input
-                    type="text"
-                    name="symbol"
-                    value={formData.symbol}
-                    onChange={handleInputChange}
-                    placeholder="e.g., AAPL"
-                    required
-                    disabled={isEditing}
-                    style={{ textTransform: "uppercase" }}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Stock Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Apple Inc."
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Number of Shares</label>
-                  <input
-                    type="number"
-                    name="shares"
-                    value={formData.shares}
-                    onChange={handleInputChange}
-                    step="any"
-                    min="0"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Average Cost per Share ($)</label>
-                  <input
-                    type="number"
-                    name="avgPrice"
-                    value={formData.avgPrice}
-                    onChange={handleInputChange}
-                    step="any"
-                    min="0"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Current Price ($)</label>
-                  <input
-                    type="number"
-                    name="currentPrice"
-                    value={formData.currentPrice}
-                    onChange={handleInputChange}
-                    step="any"
-                    min="0"
-                  />
-                </div>
-                <div className="form-actions">
-                  <button type="button" className="btn btn-secondary" onClick={closeModal}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary">
-                    {isEditing ? "Save Changes" : "Add Stock"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+      <section className="panel" aria-label="Transaction history">
+        <div className="panel-head"><h2 className="panel-title">Transaction history</h2><Link to="/wallet" className="shell-link-btn">Wallet →</Link></div>
+        {ledger.error && !ledger.data ? (
+          <ErrorState title="History unavailable" onRetry={ledger.refresh}>{ledger.error}</ErrorState>
+        ) : (
+          <DataTable columns={tradeColumns} rows={trades} rowKey={(r) => r.id} loading={ledger.loading && !ledger.data} empty="No trades or imports yet." dense />
         )}
+      </section>
 
-        {showImportModal && (
-          <div className="modal-overlay" onClick={closeImportModal}>
-            <div className="modal-content import-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3><Upload size={20} /> Import Portfolio from Broker</h3>
-                <button onClick={closeImportModal} className="close-modal-btn">
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="import-body">
-                <div className="form-group">
-                  <label>Select Your Broker</label>
-                  <select
-                    value={selectedBroker}
-                    onChange={(e) => setSelectedBroker(e.target.value)}
-                    className="broker-select"
-                  >
-                    {Object.entries(BROKER_CONFIGS).map(([key, config]) => (
-                      <option key={key} value={key}>{config.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="import-instructions">
-                  <FileText size={16} />
-                  <span>{BROKER_CONFIGS[selectedBroker].instructions}</span>
-                </div>
-
-                <div
-                  className={`file-drop-zone ${isDragging ? "dragging" : ""} ${importFile ? "has-file" : ""}`}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    accept=".csv"
-                    onChange={handleFileChange}
-                    style={{ display: "none" }}
-                  />
-                  {importFile ? (
-                    <div className="file-selected">
-                      <CheckCircle size={24} className="positive" />
-                      <span>{importFile.name}</span>
-                      <span className="file-size">({(importFile.size / 1024).toFixed(1)} KB)</span>
-                    </div>
-                  ) : (
-                    <div className="file-placeholder">
-                      <Upload size={32} />
-                      <p>Drag & drop your CSV file here</p>
-                      <span>or click to browse</span>
-                    </div>
-                  )}
-                </div>
-
-                <button type="button" className="download-sample-btn" onClick={downloadSampleCSV}>
-                  <FileText size={14} /> Download sample CSV template
-                </button>
-
-                {importError && (
-                  <div className="import-message import-error">
-                    <AlertCircle size={16} /> {importError}
-                  </div>
-                )}
-                {importSuccess && (
-                  <div className="import-message import-success">
-                    <CheckCircle size={16} /> {importSuccess}
-                  </div>
-                )}
-
-                {importPreview.length > 0 && (
-                  <div className="import-preview">
-                    <h4>Preview ({importPreview.length} holdings found)</h4>
-                    <div className="preview-table-wrapper">
-                      <table className="preview-table">
-                        <thead>
-                          <tr>
-                            <th>Symbol</th>
-                            <th>Name</th>
-                            <th>Shares</th>
-                            <th>Avg Price</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {importPreview.map((item, idx) => (
-                            <tr key={idx}>
-                              <td className="symbol-cell">{item.symbol}</td>
-                              <td>{item.name || "-"}</td>
-                              <td>{item.shares}</td>
-                              <td>${item.avgPrice.toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                <div className="form-actions">
-                  <button type="button" className="btn btn-secondary" onClick={closeImportModal}>
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={confirmImport}
-                    disabled={importPreview.length === 0 || importLoading}
-                  >
-                    {importLoading ? <><Loader size={16} className="animate-spin" /> Importing...</> : `Import ${importPreview.length} Holdings`}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="portfolio-holdings">
-          <h2>Holdings</h2>
-          {loading ? (
-            <div className="loading-state">
-              <Loader className="spinner" size={48} /> <p>Loading portfolio...</p>
-            </div>
-          ) : error ? (
-            <div className="error-state">{error}</div>
-          ) : portfolioItems.length === 0 ? (
-            <div className="empty-portfolio">
-              <h3>Your portfolio is empty.</h3>
-              <p>Start by adding your first stock or import from your broker!</p>
-              <div className="empty-actions">
-                <button className="btn btn-primary" onClick={openAddModal}>Add First Stock</button>
-                <button className="btn btn-secondary" onClick={openImportModal}><Upload size={16} /> Import from Broker</button>
-              </div>
-            </div>
-          ) : (
-            <div className="holdings-table-container">
-              <div className="holdings-table">
-                <div className="table-header">
-                  <div>Stock</div>
-                  <div className="text-right">Shares</div>
-                  <div className="text-right">Avg Cost</div>
-                  <div className="text-right">Current Price</div>
-                  <div className="text-right">Total Value</div>
-                  <div className="text-right">Gain/Loss</div>
-                  <div className="text-center">Actions</div>
-                </div>
-                {portfolioItems.map((item) => {
-                  const currentPrice = item.currentPrice || item.avgPrice || 0;
-                  const shares = item.shares || 0;
-                  const avgPrice = item.avgPrice || 0;
-                  const totalValue = shares * currentPrice;
-                  const gainLoss = totalValue - shares * avgPrice;
-                  const gainLossPercent = avgPrice > 0 ? (gainLoss / (shares * avgPrice)) * 100 : 0;
-
-                  return (
-                    <div key={item._id} className="table-row">
-                      <div className="stock-info">
-                        <div className="stock-symbol">{item.symbol}</div>
-                        <div className="stock-name">{item.name || "-"}</div>
-                      </div>
-                      <div className="text-right">{shares.toLocaleString()}</div>
-                      <div className="text-right">${avgPrice.toFixed(2)}</div>
-                      <div className="text-right">${currentPrice.toFixed(2)}</div>
-                      <div className="text-right">${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
-                      <div className="gain-loss text-right">
-                        <div className={`gain-loss-value ${gainLoss >= 0 ? "positive" : "negative"}`}>
-                          {gainLoss >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                          {gainLoss >= 0 ? "+" : "-"}${Math.abs(gainLoss).toFixed(2)}
-                        </div>
-                        <div className={`gain-loss-percent ${gainLoss >= 0 ? "positive" : "negative"}`}>
-                          ({gainLossPercent.toFixed(2)}%)
-                        </div>
-                      </div>
-                      <div className="actions">
-                        <Link to={`/stock/${item.symbol}`} className="action-btn view-btn" title="View Details">
-                          <Eye size={16} />
-                        </Link>
-                        <button className="action-btn edit-btn" title="Edit" onClick={() => openEditModal(item)}>
-                          <Edit3 size={16} />
-                        </button>
-                        <button className="action-btn delete-btn" title="Remove" onClick={() => removeStock(item._id)}>
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={refresh} />
     </div>
   );
-};
-
-export default Portfolio;
+}

@@ -21,9 +21,12 @@ cp .env.example .env
 npm install
 npm run dev                 # http://localhost:5173
 ```
-Only `JWT_SECRET` is required. Email, SMS, AI (Gemini), Google sign-in and extra market-data keys are optional; without them those features run in simulated/offline mode.
+Required: `JWT_SECRET`. Needed for trading, wallet and portfolio: `MONGO_DB_URI` (a MongoDB Atlas free cluster works; it must be a replica set because orders use transactions). Without it the rest of the app still runs and those pages show an unavailable message. Email, SMS, AI (Gemini), Google sign-in and extra market-data keys are optional; without them those features run in simulated/offline mode.
 
 ## Tests and lint
 ```bash
-cd frontend && npm run lint && node --test src/utils/tradingCalculations.test.js
+cd frontend && npm run lint && node --test src/utils/*.test.js
+cd backend && npm test      # trading engine tests; use a dedicated database and MONGO_DB_URI in backend/.env
 ```
+
+Trading rules and the API are described in `docs/TRADING_ENGINE.md`.

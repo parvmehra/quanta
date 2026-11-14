@@ -4,7 +4,7 @@ import { Search } from 'lucide-react';
 import axiosInstance from '../utils/axiosInstance';
 import { displaySymbol, exchangeLabel } from '../utils/format';
 
-export default function SymbolSearch() {
+export default function SymbolSearch({ onSelect, fluid = false, hotkey = true, placeholder = 'Search symbol or company' }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -15,6 +15,7 @@ export default function SymbolSearch() {
   const wrapRef = useRef(null);
 
   useEffect(() => {
+    if (!hotkey) return undefined;
     const onKey = (e) => {
       const tag = e.target?.tagName;
       if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) && !e.target?.isContentEditable) {
@@ -24,7 +25,7 @@ export default function SymbolSearch() {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  }, [hotkey]);
 
   useEffect(() => {
     const onDown = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
@@ -46,8 +47,18 @@ export default function SymbolSearch() {
   }, [query]);
 
   const reset = () => { setQuery(''); setResults([]); setOpen(false); setActive(-1); inputRef.current?.blur(); };
-  const goStock = (symbol) => { navigate(`/stock/${encodeURIComponent(symbol)}`); reset(); };
-  const goExplorer = () => { const q = query.trim(); if (q) { navigate(`/analyzer?q=${encodeURIComponent(q)}`); reset(); } };
+  const goStock = (symbol) => {
+    if (onSelect) onSelect(symbol);
+    else navigate(`/stock/${encodeURIComponent(symbol)}`);
+    reset();
+  };
+  const goExplorer = () => {
+    const q = query.trim();
+    if (!q) return;
+    if (onSelect) { onSelect(q.toUpperCase()); reset(); return; }
+    navigate(`/analyzer?q=${encodeURIComponent(q)}`);
+    reset();
+  };
 
   const onKeyDown = (e) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setActive((a) => Math.min(a + 1, results.length - 1)); }
@@ -63,7 +74,7 @@ export default function SymbolSearch() {
   const showList = open && query.trim().length > 0;
 
   return (
-    <div className="shell-search-wrap" ref={wrapRef}>
+    <div className={`shell-search-wrap${fluid ? ' is-fluid' : ''}`} ref={wrapRef}>
       <div className="shell-search" role="search">
         <Search size={15} aria-hidden="true" />
         <input
@@ -73,7 +84,7 @@ export default function SymbolSearch() {
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Search symbol or company"
+          placeholder={placeholder}
           aria-label="Search stocks"
           role="combobox"
           aria-expanded={showList}
@@ -82,7 +93,7 @@ export default function SymbolSearch() {
           aria-activedescendant={active >= 0 ? `symbol-opt-${active}` : undefined}
           autoComplete="off"
         />
-        <kbd aria-hidden="true">/</kbd>
+        {hotkey && <kbd aria-hidden="true">/</kbd>}
       </div>
       {showList && (
         <ul className="shell-suggest" id="symbol-search-list" role="listbox">
@@ -104,7 +115,7 @@ export default function SymbolSearch() {
           {!loading && results.length === 0 && <li className="shell-suggest__empty" role="presentation">No matches</li>}
           {loading && results.length === 0 && <li className="shell-suggest__empty" role="presentation">Searching…</li>}
           <li className="shell-suggest__all" role="presentation" onMouseDown={(e) => { e.preventDefault(); goExplorer(); }}>
-            See all results for “{query.trim()}” in Stock Explorer
+            {onSelect ? `Use “${query.trim().toUpperCase()}” as the symbol` : `See all results for “${query.trim()}” in Stock Explorer`}
           </li>
         </ul>
       )}

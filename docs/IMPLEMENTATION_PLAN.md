@@ -201,3 +201,15 @@ Known limitations:
 - Fundamentals for indices and some non-US symbols are sparse by nature of the data.
 - Percentages come as fractions from the provider and are multiplied by 100 for display; if the provider changes units this needs re-checking.
 - The Hero and Trading Terminal still contain simulated chart data of their own; they are addressed in Phase 4.
+
+**Phase 4 — done (2026-11-14).** Delivered:
+- Server-side trade engine on MongoDB Atlas (`docs/TRADING_ENGINE.md`): wallet per currency, holdings, orders, append-only ledger; every fill, deposit and import is a transaction; idempotent order submission; MARKET, LIMIT and STOP orders with an in-process matcher; simulated deposits with limits; validated CSV import. The browser no longer holds any balance or decides any price.
+- Removed the client-authoritative paths: `/api/protfolio` (add, edit, delete, bulk), the old JSON wallet top-up with caller-chosen amounts and payment references, and the localStorage wallet in the terminal.
+- Trading Terminal rebuilt in three columns (find, watchlist and movers | chart | order ticket and position) with open orders, order history, positions and activity underneath. Order ticket has a review step, live cost estimate and funds / holdings checks; the server remains the authority.
+- New pages: Orders (`/orders`), Wallet (`/wallet`). Portfolio rebuilt on server data: value, invested, unrealised and realised P&L per currency, holdings table, allocation by stock or sector, transaction history and the CSV importer. Dashboard reads positions and the ledger. Profile no longer carries a second wallet form.
+- CSV import: proper quoted-field parsing, `.NS` suffix added for Indian brokers (previously imported as US stocks), skipped rows reported.
+- Tests: 20 engine tests against Atlas (concurrency, idempotency, rollbacks, ledger invariant), 5 CSV tests, 42 browser checks covering the money flows and mobile widths.
+
+Decisions implemented from the plan: D8 (limit and stop orders rest; no leverage; flat 0.03% fee), D7 (separate USD and INR wallets, no conversion), D10 (canonical API names; the misspelled `protfolio` routes are removed).
+
+Not yet done (next): users, notification logs, chat and alert subscriptions still live in the JSON file, so the app is not deployable until they move to MongoDB; socket authentication; the landing-page showcase still contains simulated chart data; the portfolio-over-time chart (now possible from the ledger plus historical prices).

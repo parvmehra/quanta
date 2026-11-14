@@ -1,18 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { useFetch } from '../hooks/useFetch';
 import { useQuotes } from '../hooks/useQuotes';
 import DataTable from '../components/ui/DataTable';
 import { ChangeValue, EmptyState, ErrorState, Tabs } from '../components/ui/ui';
+import { Allocation, StatStrip } from '../components/PortfolioSummary';
 import { aggregateLots, totalsByCurrency, valuePositions } from '../utils/portfolioMath';
 import { getMarketStatus } from '../utils/marketHours';
 import { displaySymbol, formatDateTime, formatMoney, formatNumber, formatPrice, formatTime, NA } from '../utils/format';
 import '../styles/workspace.css';
-
-const PALETTE = ['#60A5FA', '#A78BFA', '#FBBF24', '#F472B6', '#22D3EE', '#FB923C', '#818CF8'];
-const OTHER = '#64748B';
 
 const readWatchlist = () => {
   try {
@@ -39,69 +36,22 @@ const pnlCell = (amount, pct, symbol) => (
   )
 );
 
-function StatStrip({ totals: t0 }) {
-  const sym = t0.currency === 'INR' ? '.NS' : '';
-  const hasPrices = t0.count > t0.unpriced;
-  const totals = hasPrices ? t0 : { ...t0, value: null, invested: null, pnl: null, pnlPct: null, dayPnl: null, dayPnlPct: null };
-  const sign = (n) => (n > 0 ? '+' : '');
-  return (
-    <div>
-      <div className="strip-caption">{totals.currency === 'INR' ? 'India holdings (INR)' : 'US holdings (USD)'}</div>
-      <div className="stat-strip">
-        <div className="stat"><span className="stat__label">Portfolio value</span><span className="stat__value">{formatMoney(totals.value, sym)}</span><span className="stat__sub">{totals.count} position{totals.count === 1 ? '' : 's'}{totals.unpriced ? `, ${totals.unpriced} without a live price` : ''}</span></div>
-        <div className="stat"><span className="stat__label">Invested</span><span className="stat__value">{formatMoney(totals.invested, sym)}</span><span className="stat__sub">Cost basis</span></div>
-        <div className="stat"><span className="stat__label">Total P&amp;L</span><span className={`stat__value ${totals.pnl > 0 ? 'positive' : totals.pnl < 0 ? 'negative' : ''}`}>{sign(totals.pnl)}{formatMoney(totals.pnl, sym)}</span><span className="stat__sub"><ChangeValue value={totals.pnlPct} /> unrealised</span></div>
-        <div className="stat"><span className="stat__label">Today&rsquo;s P&amp;L</span><span className={`stat__value ${totals.dayPnl > 0 ? 'positive' : totals.dayPnl < 0 ? 'negative' : ''}`}>{sign(totals.dayPnl)}{formatMoney(totals.dayPnl, sym)}</span><span className="stat__sub"><ChangeValue value={totals.dayPnlPct} /></span></div>
-      </div>
-    </div>
-  );
-}
-
-function Allocation({ positions, currency }) {
-  const rows = positions.filter((p) => p.currency === currency && p.value > 0).sort((a, b) => b.value - a.value);
-  const total = rows.reduce((s, p) => s + p.value, 0);
-  const top = rows.slice(0, PALETTE.length);
-  const rest = rows.slice(PALETTE.length).reduce((s, p) => s + p.value, 0);
-  const slices = [...top.map((p, i) => ({ name: displaySymbol(p.symbol), value: p.value, color: PALETTE[i] })), ...(rest > 0 ? [{ name: 'Other', value: rest, color: OTHER }] : [])];
-  if (!total) return <EmptyState title="Nothing to allocate">No priced holdings in this currency.</EmptyState>;
-  return (
-    <div className="panel-body" style={{ display: 'flex', gap: 'var(--sp-5)', alignItems: 'center', flexWrap: 'wrap' }}>
-      <div style={{ width: 150, height: 150, flex: 'none' }} role="img" aria-label="Allocation by market value">
-        <ResponsiveContainer>
-          <PieChart>
-            <Pie data={slices} dataKey="value" nameKey="name" innerRadius={44} outerRadius={70} paddingAngle={1} stroke="var(--q-surface)">
-              {slices.map((s) => <Cell key={s.name} fill={s.color} />)}
-            </Pie>
-            <Tooltip
-              formatter={(v, n) => [`${((v / total) * 100).toFixed(1)}%`, n]}
-              contentStyle={{ background: 'var(--q-surface-2)', border: '1px solid var(--q-border-strong)', borderRadius: 4, fontSize: 12 }}
-              itemStyle={{ color: 'var(--q-text)' }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-      <ul className="legend" style={{ flex: 1, minWidth: 140 }}>
-        {slices.map((s) => (<li key={s.name}><i style={{ background: s.color }} /><span>{s.name}</span><span>{((s.value / total) * 100).toFixed(1)}%</span></li>))}
-      </ul>
-    </div>
-  );
-}
-
 export default function Dashboard() {
   const { user } = useAuth();
   const wallet = useFetch('/api/wallet');
-  const lots = useFetch('/api/protfolio');
+  const posRes = useFetch('/api/positions');
   const [region, setRegion] = useState('US');
   const [side, setSide] = useState('gainers');
   const [allocCurrency, setAllocCurrency] = useState(null);
   const movers = useFetch(`/api/market/movers?region=${region}`, { interval: 120_000 });
 
-  const lotSymbols = useMemo(() => [...new Set((lots.data || []).map((l) => String(l.symbol).toUpperCase()))], [lots.data]);
+  const lots = useMemo(() => (posRes.data?.positions || []).map((p) => ({ symbol: p.symbol, shares: p.quantity, avgPrice: p.avgCost, name: p.name })), [posRes.data]);
+  const lotSymbols = useMemo(() => lots.map((l) => l.symbol), [lots]);
   const watchSymbols = useMemo(readWatchlist, []);
   const allSymbols = useMemo(() => [...new Set([...lotSymbols, ...watchSymbols])], [lotSymbols, watchSymbols]);
   const { quotes, loading: quotesLoading, error: quotesError, updatedAt } = useQuotes(allSymbols, { interval: 60_000 });
 
-  const positions = useMemo(() => valuePositions(aggregateLots(lots.data || []), quotes), [lots.data, quotes]);
+  const positions = useMemo(() => valuePositions(aggregateLots(lots), quotes), [lots, quotes]);
   const totals = useMemo(
     () => Object.values(totalsByCurrency(positions)).sort((a, b) => (a.currency === 'USD' ? -1 : b.currency === 'USD' ? 1 : 0)),
     [positions],
@@ -113,7 +63,7 @@ export default function Dashboard() {
   const m = movers.data && movers.data.region === region ? movers.data : null;
   const moverRows = (m?.[side] || []).slice(0, 5);
   const txs = (wallet.data?.transactions || []).slice(0, 6);
-  const balance = wallet.data?.wallet?.balance ?? user?.wallet?.balance;
+  const balances = wallet.data?.wallet?.balances;
   const status = getMarketStatus();
 
   const holdingColumns = [
@@ -134,17 +84,18 @@ export default function Dashboard() {
           <p className="pg-sub">{status.map((s) => `${s.id} market ${s.isOpen ? 'open' : 'closed'}`).join(' · ')}</p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div className="stat__label">Wallet balance (simulated)</div>
-          <div className="stat__value">{wallet.loading && balance === undefined ? '…' : formatMoney(balance, 'USD')}</div>
+          <div className="stat__label">Wallet (simulated)</div>
+          <div className="stat__value">{balances ? formatMoney(balances.USD, 'USD') : wallet.error ? '—' : '…'}</div>
+          <div className="stat__sub">{balances ? formatMoney(balances.INR, '.NS') : ''}</div>
         </div>
       </header>
 
-      {lots.error && !lots.data ? (
-        <section className="panel"><ErrorState title="Could not load your holdings" onRetry={lots.refresh}>{lots.error}</ErrorState></section>
+      {posRes.error && !posRes.data ? (
+        <section className="panel"><ErrorState title="Could not load your holdings" onRetry={posRes.refresh}>{posRes.error}</ErrorState></section>
       ) : totals.length > 0 ? (
-        totals.map((t) => <StatStrip key={t.currency} totals={t} />)
+        totals.map((t) => <StatStrip key={t.currency} totals={t} realized={posRes.data?.realized?.[t.currency] || null} />)
       ) : (
-        !lots.loading && (
+        !posRes.loading && (
           <section className="panel">
             <EmptyState title="No holdings yet" action={<Link to="/analyzer" className="btn btn-accent btn-sm">Explore stocks</Link>}>
               Your portfolio value, P&amp;L and allocation appear here once you add holdings or place a simulated trade.
@@ -210,19 +161,19 @@ export default function Dashboard() {
         </section>
       </div>
 
-      <section className="panel" aria-label="Recent wallet activity">
-        <div className="panel-head"><h2 className="panel-title">Recent wallet activity</h2><span className="pg-meta">Simulated funds</span></div>
+      <section className="panel" aria-label="Recent activity">
+        <div className="panel-head"><h2 className="panel-title">Recent activity</h2><Link to="/wallet" className="shell-link-btn">Wallet →</Link></div>
         {wallet.error && !wallet.data ? (
           <ErrorState title="Wallet unavailable" onRetry={wallet.refresh}>{wallet.error}</ErrorState>
         ) : (
           <DataTable
             columns={[
               { key: 'createdAt', label: 'Date', render: (r) => formatDateTime(r.createdAt) },
-              { key: 'type', label: 'Type', render: (r) => (r.type === 'TOPUP' ? 'Simulated deposit' : r.type) },
-              { key: 'amount', label: 'Amount', align: 'right', render: (r) => formatMoney(r.amount, 'USD') },
-              { key: 'balanceAfter', label: 'Balance after', align: 'right', hideBelow: 'sm', render: (r) => formatMoney(r.balanceAfter, 'USD') },
+              { key: 'kind', label: 'Type', render: (r) => ({ INITIAL: 'Starting balance', DEPOSIT: 'Simulated deposit', BUY: 'Buy', SELL: 'Sell', IMPORT: 'Imported holding' })[r.kind] || r.kind },
+              { key: 'symbol', label: 'Details', hideBelow: 'sm', render: (r) => (r.symbol ? `${displaySymbol(r.symbol)}${r.quantity ? ` × ${r.quantity}` : ''}` : '—') },
+              { key: 'amount', label: 'Amount', align: 'right', render: (r) => <span className={r.amount > 0 ? 'positive' : r.amount < 0 ? 'negative' : ''}>{r.amount > 0 ? '+' : ''}{formatMoney(r.amount, r.currency === 'INR' ? '.NS' : 'USD')}</span> },
             ]}
-            rows={txs} rowKey={(r) => r._id} loading={wallet.loading && !wallet.data} skeletonRows={3} empty="No wallet activity yet." dense
+            rows={txs} rowKey={(r) => r.id} loading={wallet.loading && !wallet.data} skeletonRows={3} empty="No activity yet." dense
           />
         )}
       </section>

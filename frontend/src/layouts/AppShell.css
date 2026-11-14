@@ -142,3 +142,4 @@
 .shell-suggest__ex { font-size: var(--fs-xs); color: var(--q-text-3); border: 1px solid var(--q-border); border-radius: var(--q-radius-sm); padding: 0 5px; }
 .shell-suggest__empty { color: var(--q-text-3); cursor: default !important; }
 .shell-suggest__all { color: var(--q-info); border-top: 1px solid var(--q-border); border-radius: 0 !important; margin-top: var(--sp-1); font-size: var(--fs-sm) !important; }
+.shell-search-wrap.is-fluid { width: 100%; }

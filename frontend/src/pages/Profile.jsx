@@ -43,11 +43,6 @@ const Profile = () => {
   const [otpLoading, setOtpLoading] = useState(false);
   const [, setResendCooldown] = useState(0);
 
-  const [showWalletModal, setShowWalletModal] = useState(false);
-  const [topupAmount, setTopupAmount] = useState('5000');
-  const [topupLoading, setTopupLoading] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(500000);
-
   const [subscriptions, setSubscriptions] = useState([]);
   const [notificationLogs, setNotificationLogs] = useState([]);
   const [, setLoadingData] = useState(true);
@@ -56,20 +51,12 @@ const Profile = () => {
     if (user?.notificationPreferences) {
       setPrefs(user.notificationPreferences);
     }
-    if (user?.wallet?.balance !== undefined) {
-      setWalletBalance(user.wallet.balance);
-    }
     fetchProfileData();
   }, [user]);
 
   const fetchProfileData = async () => {
     setLoadingData(true);
     try {
-      const walletRes = await axiosInstance.get('/api/wallet');
-      if (walletRes.data?.wallet) {
-        setWalletBalance(walletRes.data.wallet.balance);
-      }
-
       const subsRes = await axiosInstance.get('/api/stocks/subscriptions');
       setSubscriptions(subsRes.data || []);
 
@@ -158,32 +145,6 @@ const Profile = () => {
       toast.error(err.response?.data?.message || err.message || 'Invalid code');
     } finally {
       setOtpLoading(false);
-    }
-  };
-
-  const handleTopupSubmit = async (e) => {
-    e.preventDefault();
-    const amount = Number(topupAmount);
-    if (!amount || amount <= 0) {
-      toast.error('Enter a valid deposit amount');
-      return;
-    }
-
-    setTopupLoading(true);
-    try {
-      const res = await axiosInstance.post('/api/wallet/topup', {
-        amount,
-        paymentMethod: 'Razorpay Instant Deposit',
-      });
-      setWalletBalance(res.data.wallet.balance);
-      toast.success(res.data.message || 'Wallet credited successfully!');
-      addNotification('Wallet Top-Up Confirmed', `+$${amount.toLocaleString()} added to your margin.`, 'success');
-      setShowWalletModal(false);
-      fetchProfileData();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Top-up failed');
-    } finally {
-      setTopupLoading(false);
     }
   };
 
@@ -372,7 +333,7 @@ const Profile = () => {
 
                 <div className="pref-table-row">
                   <div className="pref-row-desc">
-                    <strong>Wallet & Razorpay Payments</strong>
+                    <strong>Wallet activity</strong>
                     <span>Top-up confirmations, refunds, and transaction receipts</span>
                   </div>
                   <div className="pref-toggle-wrap">
@@ -403,34 +364,12 @@ const Profile = () => {
             <div className="profile-card profile-wallet-card">
               <div className="wallet-card-header">
                 <div>
-                  <span className="wallet-sub-title">Trading Wallet & Available Margin</span>
-                  <div className="wallet-amount-row">
-                    <span className="wallet-balance">${walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                    <span className="wallet-currency-badge">USD</span>
-                  </div>
+                  <span className="wallet-sub-title">Simulated wallet</span>
+                  <p style={{ color: 'var(--q-text-2)', fontSize: 'var(--fs-sm)', marginTop: 6 }}>
+                    Your balances, deposits and full transaction history are on the Wallet page. All funds are simulated.
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  className="btn-topup-wallet"
-                  onClick={() => setShowWalletModal(true)}
-                >
-                  <Plus size={15} /> Top-Up Margin
-                </button>
-              </div>
-
-              <div className="wallet-perks">
-                <div className="perk-item">
-                  <span className="perk-label">Simulated Execution</span>
-                  <span className="perk-val">Zero Risk</span>
-                </div>
-                <div className="perk-item">
-                  <span className="perk-label">Instant Settlement</span>
-                  <span className="perk-val">Active</span>
-                </div>
-                <div className="perk-item">
-                  <span className="perk-label">Multi-Exchange</span>
-                  <span className="perk-val">US & India</span>
-                </div>
+                <Link to="/wallet" className="btn-topup-wallet">Open wallet</Link>
               </div>
             </div>
 
@@ -567,54 +506,6 @@ const Profile = () => {
         </div>
       )}
 
-      {showWalletModal && (
-        <div className="profile-modal-overlay">
-          <div className="profile-modal-card">
-            <h3>Add Trading Margin</h3>
-            <p>Select or enter an amount to top-up your paper-trading wallet.</p>
-
-            <form onSubmit={handleTopupSubmit}>
-              <div className="amount-pills">
-                {['1000', '5000', '10000', '25000', '50000'].map((amt) => (
-                  <button
-                    key={amt}
-                    type="button"
-                    className={`amt-pill ${topupAmount === amt ? 'active' : ''}`}
-                    onClick={() => setTopupAmount(amt)}
-                  >
-                    +${Number(amt).toLocaleString()}
-                  </button>
-                ))}
-              </div>
-
-              <div className="modal-input-group" style={{ marginTop: '14px' }}>
-                <label>Deposit Amount (USD)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10000000"
-                  value={topupAmount}
-                  onChange={(e) => setTopupAmount(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="razorpay-badge-notice">
-                <span>⚡ Integrated with Razorpay instant simulated margin processing. Triggers Email & SMS confirmation.</span>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn-modal-cancel" onClick={() => setShowWalletModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-modal-submit" disabled={topupLoading}>
-                  {topupLoading ? <Loader2 size={16} className="animate-spin" /> : 'Confirm Deposit'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

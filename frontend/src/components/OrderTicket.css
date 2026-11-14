@@ -1,0 +1,36 @@
+.ot-sim { font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--q-warning); border: 1px solid var(--q-warning); border-radius: var(--q-radius-sm); padding: 0 6px; }
+.ot-body { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); }
+.ot-sides { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--q-border); border-radius: var(--q-radius); overflow: hidden; }
+.ot-sides button { padding: 8px; font-weight: 600; font-size: var(--fs-base); color: var(--q-text-2); }
+.ot-sides button:hover { background: var(--q-surface-2); color: var(--q-text); }
+.ot-sides--buy button.is-active { background: var(--q-positive-bg); color: var(--q-positive); }
+.ot-sides--sell button.is-active { background: var(--q-negative-bg); color: var(--q-negative); }
+.ot-field { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-sm); color: var(--q-text-2); }
+.ot-field > span { display: flex; justify-content: space-between; align-items: center; }
+.ot-link { color: var(--q-info); font-size: var(--fs-xs); }
+.ot-input { display: flex; align-items: center; border: 1px solid var(--q-border); border-radius: var(--q-radius); background: var(--q-surface-2); }
+.ot-input:focus-within { border-color: var(--q-info); }
+.ot-input input { flex: 1; min-width: 0; border: 0; background: transparent; box-shadow: none; padding: 8px 10px; text-align: right; font-size: var(--fs-md); font-variant-numeric: tabular-nums; color: var(--q-text); }
+.ot-input input:focus { box-shadow: none; }
+.ot-input button { width: 34px; align-self: stretch; color: var(--q-text-2); font-size: var(--fs-lg); }
+.ot-input button:hover { background: var(--q-surface-3); color: var(--q-text); }
+.ot-input em { padding-left: 10px; font-style: normal; color: var(--q-text-3); }
+.ot-hint, .ot-note { font-size: var(--fs-xs); color: var(--q-text-2); line-height: 1.5; }
+.ot-note { color: var(--q-text-2); }
+.ot-error { font-size: var(--fs-sm); color: var(--q-negative); }
+.ot-sum { display: flex; flex-direction: column; border-top: 1px solid var(--q-border); padding-top: var(--sp-2); }
+.ot-sum > div { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 4px 0; font-size: var(--fs-sm); }
+.ot-sum dt { color: var(--q-text-2); }
+.ot-sum dd { font-variant-numeric: tabular-nums; text-align: right; }
+.ot-sum__total { border-top: 1px solid var(--q-border); margin-top: 4px; padding-top: 8px !important; font-weight: 650; font-size: var(--fs-base) !important; }
+.ot-submit { width: 100%; font-weight: 650; color: #0B1017; }
+.ot-submit--buy { background: var(--q-positive); border-color: var(--q-positive); }
+.ot-submit--sell { background: var(--q-negative); border-color: var(--q-negative); color: #fff; }
+.ot-submit:disabled { opacity: 0.45; cursor: not-allowed; }
+.ot-review { display: flex; flex-direction: column; gap: var(--sp-2); border: 1px solid var(--q-border-strong); border-radius: var(--q-radius); padding: var(--sp-3); background: var(--q-surface-2); font-size: var(--fs-sm); }
+.ot-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: var(--sp-2); }
+.ot-foot { text-align: center; font-size: var(--fs-xs); }
+.ot-foot a { color: var(--q-info); }
+.ot-status { display: inline-flex; flex-direction: column; gap: 2px; }
+.ot-status small { color: var(--q-text-3); font-size: var(--fs-xs); }
+.sym-link:hover strong { color: var(--q-info); text-decoration: underline; }

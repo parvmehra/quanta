@@ -1,89 +1,51 @@
 import express from 'express';
-import crypto from 'crypto';
+import LedgerEntry from '../models/LedgerEntry.js';
 import { protect } from '../middlewares/auth.js';
-import { store, saveStore } from '../dataStore.js';
+import { requireDb } from '../middlewares/requireDb.js';
+import { store } from '../dataStore.js';
 import { notifyUser } from '../services/notificationService.js';
+import { TradeError, getBalances, deposit, serializeEntry, DEPOSIT_MAX, DEPOSIT_DAILY_CAP } from '../services/tradeService.js';
 
 const router = express.Router();
+router.use(protect, requireDb);
 
-router.get('/', protect, (req, res) => {
+const fail = (res, err) => {
+  if (err instanceof TradeError) return res.status(err.status).json({ code: err.code, message: err.message });
+  console.error('Wallet route error:', err.message);
+  return res.status(500).json({ code: 'SERVER_ERROR', message: 'Something went wrong. Please try again.' });
+};
+
+router.get('/', async (req, res) => {
   try {
-    const user = store.users.find(u => u._id === req.user._id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    if (!user.wallet) {
-      user.wallet = { balance: 500000, currency: 'USD' };
-      saveStore();
-    }
-
-    if (!store.walletTransactions) store.walletTransactions = [];
-    const transactions = store.walletTransactions
-      .filter(tx => tx.userId === req.user._id)
-      .sort((a, b) => b.createdAt - a.createdAt);
-
+    const balances = await getBalances(req.user._id);
+    const entries = await LedgerEntry.find({ userId: req.user._id }).sort({ createdAt: -1, _id: -1 }).limit(50).lean();
     res.json({
-      wallet: user.wallet,
-      transactions,
+      wallet: { balances, balance: balances.USD, currency: 'USD' },
+      limits: { depositMax: DEPOSIT_MAX, depositDailyCap: DEPOSIT_DAILY_CAP },
+      transactions: entries.map(serializeEntry),
     });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    fail(res, err);
   }
 });
 
-router.post('/topup', protect, async (req, res) => {
-  const { amount, paymentMethod, paymentId } = req.body;
-  const numAmount = Number(amount);
-
-  if (!numAmount || numAmount <= 0) {
-    return res.status(400).json({ message: 'Top-up amount must be greater than zero.' });
-  }
-
-  if (numAmount > 10000000) {
-    return res.status(400).json({ message: 'Maximum single deposit limit is $10,000,000.' });
-  }
-
+router.post('/topup', async (req, res) => {
   try {
-    const user = store.users.find(u => u._id === req.user._id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    if (!user.wallet) user.wallet = { balance: 500000, currency: 'USD' };
-
-    const referenceId = paymentId || `pay_rzp_${crypto.randomUUID().slice(0, 10)}`;
-    const newBalance = Number((user.wallet.balance + numAmount).toFixed(2));
-    user.wallet.balance = newBalance;
-
-    if (!store.walletTransactions) store.walletTransactions = [];
-    const transaction = {
-      _id: crypto.randomUUID(),
-      userId: user._id,
-      type: 'TOPUP',
-      amount: numAmount,
-      balanceAfter: newBalance,
-      referenceId,
-      paymentMethod: paymentMethod || 'Razorpay Instant',
-      status: 'COMPLETED',
-      description: `Wallet margin deposit via ${paymentMethod || 'Razorpay Checkout'}`,
-      createdAt: Date.now(),
-    };
-
-    store.walletTransactions.push(transaction);
-    saveStore();
-
-    await notifyUser(user, 'WALLET_TOPUP', {
-      amount: numAmount,
-      newBalance,
-      method: paymentMethod || 'Razorpay Checkout',
-      referenceId,
-    });
-
+    const entry = await deposit(req.user._id, req.body?.currency || 'USD', req.body?.amount);
+    const balances = await getBalances(req.user._id);
     res.status(201).json({
-      message: `Wallet successfully credited with +$${numAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
-      wallet: user.wallet,
-      transaction,
+      message: 'Simulated deposit added.',
+      wallet: { balances, balance: balances.USD, currency: 'USD' },
+      transaction: serializeEntry(entry),
     });
+    const user = store.users.find((u) => u._id === req.user._id);
+    if (user) {
+      notifyUser(user, 'WALLET_TOPUP', {
+        amount: entry.amount / 100, newBalance: entry.balanceAfter / 100, method: 'Simulated deposit', referenceId: String(entry._id),
+      }).catch(() => {});
+    }
   } catch (err) {
-    console.error('Wallet topup error:', err);
-    res.status(500).json({ message: 'Server error processing wallet deposit.' });
+    fail(res, err);
   }
 });
 

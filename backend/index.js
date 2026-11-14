@@ -7,10 +7,12 @@ import cors from 'cors';
 import { yahooFinance, VALID_SYMBOL } from './services/yahoo.js';
 import stockRoutes from './routes/stockRoutes.js';
 import authRoutes from './routes/authRoutes.js';
-import protfolioRoutes from './routes/protfolioRoutes.js';
+import tradingRoutes from './routes/tradingRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import walletRoutes from './routes/walletRoutes.js';
 import marketRoutes from './routes/marketRoutes.js';
+import connectDB, { isDbReady } from './config/connectDB.js';
+import { runMatcher } from './services/tradeService.js';
 import { store, saveStore } from './dataStore.js';
 import cookieParser from "cookie-parser";
 import crypto from 'crypto';
@@ -63,7 +65,7 @@ app.use(cookieParser());
 
 app.use('/api/stocks', stockRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/protfolio', protfolioRoutes);
+app.use('/api', tradingRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/market', marketRoutes);
@@ -202,6 +204,26 @@ io.on('connection', (socket) => {
     }
   });
 });
+
+const MATCHER_INTERVAL_MS = 20 * 1000;
+let matching = false;
+function startMatcher() {
+  const timer = setInterval(async () => {
+    if (matching || !isDbReady()) return;
+    matching = true;
+    try {
+      const { filled } = await runMatcher();
+      if (filled > 0) console.log(`Order matcher filled ${filled} order(s)`);
+    } catch (err) {
+      console.error('Order matcher error:', err.message);
+    } finally {
+      matching = false;
+    }
+  }, MATCHER_INTERVAL_MS);
+  timer.unref();
+}
+
+connectDB().then((ok) => { if (ok) startMatcher(); });
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
