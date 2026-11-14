@@ -725,7 +725,7 @@ export const getBatchQuotes = async (req, res) => {
 };
 
 
-// ─── 7. MarketLens AI Advisor ────────────────────────────────────────
+// ─── 7. Quanta AI Advisor ────────────────────────────────────────
 export const getStockAdvisorResponse = async (req, res) => {
     const { symbol, message, history, context } = req.body;
     if (!symbol) {

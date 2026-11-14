@@ -82,7 +82,7 @@ export const sendSms = async ({ to, message, userId = null, eventType = 'GENERAL
   try {
     const payload = {
       to,
-      body: `MarketLens: ${message}`,
+      body: `Quanta: ${message}`,
     };
 
     if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
@@ -133,7 +133,7 @@ export const sendPhoneVerificationOtp = async (user, phoneNumber) => {
   user.phoneOtpLastSent = now;
   saveStore();
 
-  const smsText = `Your MarketLens mobile verification code is: ${otpCode}. Valid for 10 minutes. Do not share this code.`;
+  const smsText = `Your Quanta mobile verification code is: ${otpCode}. Valid for 10 minutes. Do not share this code.`;
   const result = await sendSms({
     to: phoneNumber,
     message: smsText,
@@ -198,7 +198,7 @@ export const verifyPhoneOtp = async (user, inputOtp) => {
   // Send confirmation alert
   await sendSms({
     to: user.phone,
-    message: 'Your mobile number has been successfully verified for MarketLens account alerts.',
+    message: 'Your mobile number has been successfully verified for Quanta account alerts.',
     userId: user._id,
     eventType: 'PHONE_VERIFIED',
   });
@@ -211,7 +211,7 @@ export const verifyPhoneOtp = async (user, inputOtp) => {
 export const sendStockSubscriptionSMS = async (phoneNumber, symbol, companyName, userId) => {
   return sendSms({
     to: phoneNumber,
-    message: `Subscribed! You are now receiving alerts for ${symbol} (${companyName || symbol}). Manage preferences at marketlens.com/profile`,
+    message: `Subscribed! You are now receiving alerts for ${symbol} (${companyName || symbol}). Manage preferences in your Quanta profile.`,
     userId,
     eventType: 'STOCK_SUBSCRIPTION',
   });

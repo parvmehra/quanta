@@ -8,6 +8,7 @@ import { store, saveStore } from '../dataStore.js';
 import { notifyUser } from '../services/notificationService.js';
 import { sendPhoneVerificationOtp, verifyPhoneOtp, isValidE164 } from '../services/smsService.js';
 import admin from '../config/firebase.js';
+import { JWT_SECRET } from '../config/env.js';
 
 const router = express.Router();
 
@@ -34,7 +35,7 @@ const isSecureRequest = (req) => {
 };
 
 const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET || 'marketlens_jwt_secret_key_2026', { expiresIn: '7d' });
+  return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '7d' });
 };
 
 const validatePasswordStrength = (password) => {
@@ -242,7 +243,7 @@ router.post('/verify-email', async (req, res) => {
     });
 
     res.json({
-      message: 'Email verified successfully! Welcome to MarketLens.',
+      message: 'Email verified successfully! Welcome to Quanta.',
       token: jwtToken,
       user: formatUserResponse(user),
     });
@@ -334,7 +335,7 @@ router.post('/login', authLimiter, async (req, res) => {
         requiresVerification: true,
         email: user.email,
         message: 'Your email address has not been verified yet. A verification code has been dispatched.',
-        debugCode: verifyCode,
+        debugCode: process.env.NODE_ENV !== 'production' ? verifyCode : undefined,
       });
     }
 

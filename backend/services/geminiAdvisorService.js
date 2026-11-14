@@ -76,7 +76,7 @@ function buildSystemPrompt(symbol, context, newsList) {
     ? newsList.map((n, i) => `${i + 1}. "${n.title}" (${n.publisher || 'MarketWire'})`).join('\n')
     : 'No breaking headlines in current session.';
 
-  return `You are MarketLens AI, an institutional-grade financial stock advisor and quantitative research copilot built directly into the MarketLens trading terminal.
+  return `You are Quanta AI, an institutional-grade financial stock advisor and quantitative research copilot built directly into the Quanta trading terminal.
 
 CRITICAL INSTRUCTIONS:
 1. TRUTHFULNESS & ACCURACY: You must strictly use the verified real-time market data provided below for ${symbol.toUpperCase()}. NEVER invent prices, fake returns, nonexistent volume, or contradictory numbers.
@@ -148,7 +148,7 @@ function generateAnalyticalFallback(symbol, message, context, newsList, history 
       if (content.includes('peers & industry') || content.includes('peers \u0026 industry')) pastTopics.add('compare');
       if (content.includes('price movement analysis')) pastTopics.add('movement');
       if (content.includes('research assessment')) pastTopics.add('buysell');
-      if (content.includes('marketlens analysis')) pastTopics.add('general');
+      if (content.includes('quanta analysis')) pastTopics.add('general');
       if (content.includes('technical deep-dive')) pastTopics.add('technical');
       if (content.includes('support & resistance') || content.includes('support \u0026 resistance')) pastTopics.add('levels');
       if (content.includes('volume & momentum') || content.includes('volume \u0026 momentum')) pastTopics.add('volume');
@@ -388,7 +388,7 @@ Use **Bracket Orders** in the Trade panel to automate your entry/SL/TP.`;
   } else {
     // General / Comprehensive Analysis — varies based on repeat
     if (!isRepeatTopic) {
-      body = `### 📊 MarketLens Analysis: ${companyName} (${sym})
+      body = `### 📊 Quanta Analysis: ${companyName} (${sym})
 
 - **Market Pulse:** Currently priced at **${curr}${price}** (${changePct >= 0 ? '+' : ''}${changePct}%), within day bounds of **${curr}${dayLow}** – **${curr}${dayHigh}**.
 - **Trend & Moving Average:** Price is trading ${aboveSma ? 'above' : 'below'} the 15-day SMA (**${curr}${sma}**), reflecting a **${isPositive ? 'bullish' : 'consolidating'}** stance.

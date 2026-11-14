@@ -53,9 +53,9 @@ initTransporter();
 
 const getFromAddress = () => {
   if (process.env.EMAIL_FROM) return process.env.EMAIL_FROM;
-  if (process.env.SMTP_USER) return `"MarketLens" <${process.env.SMTP_USER}>`;
-  if (process.env.GMAIL_USER) return `"MarketLens" <${process.env.GMAIL_USER}>`;
-  return '"MarketLens" <no-reply@marketlens.com>';
+  if (process.env.SMTP_USER) return `"Quanta" <${process.env.SMTP_USER}>`;
+  if (process.env.GMAIL_USER) return `"Quanta" <${process.env.GMAIL_USER}>`;
+  return '"Quanta" <no-reply@quanta.local>';
 };
 
 const getAppBaseUrl = () => {
@@ -95,7 +95,7 @@ const emailHeader = (title) => `
   <div class="wrapper">
     <div class="header">
       <div class="logo">
-        <span style="color: #22c55e; font-size: 22px;">▲</span> MarketLens
+        <span style="color: #22c55e; font-size: 22px;">▲</span> Quanta
         <span class="logo-badge">FINTECH</span>
       </div>
     </div>
@@ -105,8 +105,8 @@ const emailHeader = (title) => `
 const emailFooter = `
     </div>
     <div class="footer">
-      <p style="margin: 0 0 8px 0;">MarketLens Financial Technologies Inc. • Global Markets & Portfolio Analytics</p>
-      <p style="margin: 0;">This is an automated notification. For support or queries, visit the MarketLens FAQ & Help Centre.</p>
+      <p style="margin: 0 0 8px 0;">Quanta Financial Technologies Inc. • Global Markets & Portfolio Analytics</p>
+      <p style="margin: 0;">This is an automated notification. For support or queries, visit the Quanta FAQ & Help Centre.</p>
     </div>
   </div>
 </body>
@@ -178,14 +178,14 @@ export const sendMail = async ({ to, subject, html, text, userId = null, eventTy
  */
 export const sendVerificationEmail = async ({ toEmail, name, token, userId }) => {
   const verifyLink = `${getAppBaseUrl()}/login?verifyToken=${encodeURIComponent(token)}&email=${encodeURIComponent(toEmail)}`;
-  const subject = 'Verify your MarketLens account';
-  const text = `Hi ${name},\n\nWelcome to MarketLens! Please verify your email address to activate your account.\n\nYour 6-digit verification code is: ${token}\n\nOr click this link to verify: ${verifyLink}\n\nThis verification code will expire in 24 hours.\n\nBest regards,\nThe MarketLens Team`;
+  const subject = 'Verify your Quanta account';
+  const text = `Hi ${name},\n\nWelcome to Quanta! Please verify your email address to activate your account.\n\nYour 6-digit verification code is: ${token}\n\nOr click this link to verify: ${verifyLink}\n\nThis verification code will expire in 24 hours.\n\nBest regards,\nThe Quanta Team`;
 
   const html = `
     ${emailHeader(subject)}
       <h1 class="h1">Verify your email address</h1>
       <p>Hi <strong>${name}</strong>,</p>
-      <p>Thank you for creating your account on MarketLens. To access the global stock screener, trade simulator, and portfolio management tools, please verify your email address.</p>
+      <p>Thank you for creating your account on Quanta. To access the global stock screener, trade simulator, and portfolio management tools, please verify your email address.</p>
       
       <div class="card-box" style="text-align: center;">
         <span style="font-size: 13px; color: #8da194; text-transform: uppercase; letter-spacing: 0.05em;">Your Verification Code</span>
@@ -197,7 +197,7 @@ export const sendVerificationEmail = async ({ toEmail, name, token, userId }) =>
         <a href="${verifyLink}" class="btn">Verify Email Address →</a>
       </div>
 
-      <p style="font-size: 13px; color: #8da194;">If you did not register for an account on MarketLens, you can safely ignore this email.</p>
+      <p style="font-size: 13px; color: #8da194;">If you did not register for an account on Quanta, you can safely ignore this email.</p>
     ${emailFooter}
   `;
 
@@ -208,14 +208,14 @@ export const sendVerificationEmail = async ({ toEmail, name, token, userId }) =>
  * 1.5 Login OTP Email (Passwordless Sign-In)
  */
 export const sendLoginOtpEmail = async ({ toEmail, name, otp, userId }) => {
-  const subject = `Your MarketLens One-Time Login Code: ${otp}`;
-  const text = `Hi ${name || 'Trader'},\n\nYour one-time login verification code for MarketLens is: ${otp}\n\nThis code is valid for 10 minutes. If you did not request this login code, you can safely ignore this email.\n\nBest regards,\nThe MarketLens Team`;
+  const subject = `Your Quanta One-Time Login Code: ${otp}`;
+  const text = `Hi ${name || 'Trader'},\n\nYour one-time login verification code for Quanta is: ${otp}\n\nThis code is valid for 10 minutes. If you did not request this login code, you can safely ignore this email.\n\nBest regards,\nThe Quanta Team`;
 
   const html = `
     ${emailHeader(subject)}
       <h1 class="h1">Your Login Verification Code</h1>
       <p>Hi <strong>${name || 'Trader'}</strong>,</p>
-      <p>Use the 6-digit one-time passcode below to securely log in to your MarketLens account:</p>
+      <p>Use the 6-digit one-time passcode below to securely log in to your Quanta account:</p>
       
       <div class="card-box" style="text-align: center; background: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.3);">
         <span style="font-size: 13px; color: #8da194; text-transform: uppercase; letter-spacing: 0.06em;">One-Time Login Code</span>
@@ -223,7 +223,7 @@ export const sendLoginOtpEmail = async ({ toEmail, name, otp, userId }) => {
         <p style="margin: 6px 0 0; font-size: 12px; color: #94a3b8;">⏱️ Valid for 10 minutes &bull; Do not share this code with anyone</p>
       </div>
 
-      <p style="font-size: 13px; color: #8da194;">If you did not attempt to sign in to MarketLens, please disregard this email or review your account security.</p>
+      <p style="font-size: 13px; color: #8da194;">If you did not attempt to sign in to Quanta, please disregard this email or review your account security.</p>
     ${emailFooter}
   `;
 
@@ -237,11 +237,11 @@ export const sendWelcomeEmail = async ({ toEmail, name, userId }) => {
   const dashboardLink = `${getAppBaseUrl()}/analyzer`;
   const tradeLink = `${getAppBaseUrl()}/trade/AAPL`;
   const portfolioLink = `${getAppBaseUrl()}/portfolio`;
-  const subject = `Welcome to MarketLens, ${name || 'Trader'}! Your Terminal is Ready 🚀`;
+  const subject = `Welcome to Quanta, ${name || 'Trader'}! Your Terminal is Ready 🚀`;
 
   const text = `Hi ${name || 'Trader'},
 
-Welcome to MarketLens! Your institutional-grade market terminal account is fully activated.
+Welcome to Quanta! Your institutional-grade market terminal account is fully activated.
 
 WHAT HAS BEEN PROVISIONED FOR YOU:
 • Virtual Trading Balance: $500,000.00 USD (Paper Trading)
@@ -255,8 +255,8 @@ ${dashboardLink}
 Start trading AAPL or Indian equities (e.g. RELIANCE.NS, TCS.NS) risk-free today!
 
 Best regards,
-The MarketLens Team
-https://marketlens.com`;
+The Quanta Team
+${getAppBaseUrl()}`;
 
   const html = `
 <!DOCTYPE html>
@@ -293,7 +293,7 @@ https://marketlens.com`;
                 <tr>
                   <td align="left">
                     <span style="font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
-                      <span style="color: #22c55e;">▲</span> MarketLens
+                      <span style="color: #22c55e;">▲</span> Quanta
                     </span>
                     <span style="display: inline-block; margin-left: 8px; background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); color: #22c55e; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px; vertical-align: middle; letter-spacing: 0.06em;">TERMINAL</span>
                   </td>
@@ -312,7 +312,7 @@ https://marketlens.com`;
             <td class="content" style="padding: 36px 36px 20px 36px;">
               <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #22c55e; text-transform: uppercase; letter-spacing: 0.08em;">Welcome Aboard</p>
               <h1 style="margin: 0 0 16px 0; font-size: 26px; font-weight: 800; color: #ffffff; line-height: 1.3;">
-                Welcome to MarketLens, ${name || 'Trader'}! 🎉
+                Welcome to Quanta, ${name || 'Trader'}! 🎉
               </h1>
               <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: #94a3b8;">
                 Your account is verified and ready. You now have instant access to our next-generation stock screener, real-time market feeds across global & Indian bourses, and a risk-free paper trading engine.
@@ -376,7 +376,7 @@ https://marketlens.com`;
                 <tr>
                   <td align="center">
                     <a href="${dashboardLink}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #042e16; font-size: 15px; font-weight: 800; text-decoration: none; padding: 15px 36px; border-radius: 10px; box-shadow: 0 8px 24px rgba(34, 197, 94, 0.35); letter-spacing: -0.01em;">
-                      Launch MarketLens Terminal &rarr;
+                      Launch Quanta Terminal &rarr;
                     </a>
                   </td>
                 </tr>
@@ -400,7 +400,7 @@ https://marketlens.com`;
           <tr>
             <td style="padding: 24px 36px; background-color: #090e0c; border-top: 1px solid rgba(255, 255, 255, 0.05); text-align: center;">
               <p style="margin: 0 0 10px 0; font-size: 12px; color: #64748b; line-height: 1.5;">
-                MarketLens Financial Technologies Inc. &bull; Global Market Intelligence & Simulated Trading
+                Quanta Financial Technologies Inc. &bull; Global Market Intelligence & Simulated Trading
               </p>
               <p style="margin: 0 0 12px 0; font-size: 12px; color: #475569;">
                 <a href="${dashboardLink}" style="color: #22c55e; text-decoration: none; margin: 0 8px;">Stock Screener</a> &bull;
@@ -408,7 +408,7 @@ https://marketlens.com`;
                 <a href="${portfolioLink}" style="color: #22c55e; text-decoration: none; margin: 0 8px;">Portfolio</a>
               </p>
               <p style="margin: 0; font-size: 11px; color: #475569;">
-                This email was sent to <span style="color: #94a3b8;">${toEmail}</span> because you created an account on MarketLens. If this was not you, please contact support immediately.
+                This email was sent to <span style="color: #94a3b8;">${toEmail}</span> because you created an account on Quanta. If this was not you, please contact support immediately.
               </p>
             </td>
           </tr>
@@ -430,14 +430,14 @@ https://marketlens.com`;
  */
 export const sendSignupWelcomeEmail = async ({ toEmail, name, userId }) => {
   const verifyLink = `${getAppBaseUrl()}/login`;
-  const subject = `Welcome to MarketLens, ${name || 'Trader'}! Please verify your account`;
-  const text = `Hi ${name || 'Trader'},\n\nThank you for signing up for MarketLens — your institutional-grade stock analysis and paper trading terminal.\n\nWHAT'S WAITING FOR YOU:\n• $500,000 Virtual Trading Capital\n• Real-time global market feeds (NASDAQ, NYSE, NSE, BSE)\n• AI-Powered Stock Advisor (Google Gemini)\n• Interactive candlestick charts & technical indicators\n• Multi-broker portfolio import support\n\nPlease check your inbox for the verification code and verify your email to unlock full access.\n\nSign in here: ${verifyLink}\n\nBest regards,\nThe MarketLens Team`;
+  const subject = `Welcome to Quanta, ${name || 'Trader'}! Please verify your account`;
+  const text = `Hi ${name || 'Trader'},\n\nThank you for signing up for Quanta — your institutional-grade stock analysis and paper trading terminal.\n\nWHAT'S WAITING FOR YOU:\n• $500,000 Virtual Trading Capital\n• Real-time global market feeds (NASDAQ, NYSE, NSE, BSE)\n• AI-Powered Stock Advisor (Google Gemini)\n• Interactive candlestick charts & technical indicators\n• Multi-broker portfolio import support\n\nPlease check your inbox for the verification code and verify your email to unlock full access.\n\nSign in here: ${verifyLink}\n\nBest regards,\nThe Quanta Team`;
 
   const html = `
     ${emailHeader(subject)}
-      <h1 class="h1">Welcome to MarketLens! 🎉</h1>
+      <h1 class="h1">Welcome to Quanta! 🎉</h1>
       <p>Hi <strong>${name || 'Trader'}</strong>,</p>
-      <p>Thank you for signing up! We're thrilled to have you join the MarketLens community of traders and market analysts.</p>
+      <p>Thank you for signing up! We're thrilled to have you join the Quanta community of traders and market analysts.</p>
 
       <div class="card-box" style="text-align: center; background: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.3);">
         <span style="font-size: 13px; color: #86efac; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;">Your Account Has Been Created</span>
@@ -471,15 +471,15 @@ export const sendSignupWelcomeEmail = async ({ toEmail, name, userId }) => {
  * 3. Login Alert Notification
  */
 export const sendLoginAlertEmail = async ({ toEmail, name, ip, userAgent, userId }) => {
-  const subject = 'New sign-in to your MarketLens account';
+  const subject = 'New sign-in to your Quanta account';
   const timeStr = new Date().toUTCString();
-  const text = `Hi ${name},\n\nA new sign-in to your MarketLens account was detected at ${timeStr}.\n\nIP Address: ${ip || 'Unknown'}\nDevice: ${userAgent || 'Web Browser'}\n\nIf this was you, no action is needed. If you did not sign in, please reset your password immediately.`;
+  const text = `Hi ${name},\n\nA new sign-in to your Quanta account was detected at ${timeStr}.\n\nIP Address: ${ip || 'Unknown'}\nDevice: ${userAgent || 'Web Browser'}\n\nIf this was you, no action is needed. If you did not sign in, please reset your password immediately.`;
 
   const html = `
     ${emailHeader(subject)}
       <h1 class="h1">New sign-in detected</h1>
       <p>Hi <strong>${name}</strong>,</p>
-      <p>We detected a new successful login to your MarketLens account.</p>
+      <p>We detected a new successful login to your Quanta account.</p>
 
       <div class="card-box">
         <table class="table-details">
@@ -503,7 +503,7 @@ export const sendLoginAlertEmail = async ({ toEmail, name, ip, userAgent, userId
 export const sendStockSubscriptionEmail = async ({ toEmail, name, symbol, companyName, price, userId }) => {
   const stockUrl = `${getAppBaseUrl()}/stock/${encodeURIComponent(symbol)}`;
   const subject = `Subscription Confirmed: ${symbol} (${companyName || symbol})`;
-  const text = `Hi ${name},\n\nYou have subscribed to live alerts for ${symbol} (${companyName || symbol}) at current price $${price}.\n\nView stock details: ${stockUrl}\n\nBest regards,\nThe MarketLens Team`;
+  const text = `Hi ${name},\n\nYou have subscribed to live alerts for ${symbol} (${companyName || symbol}) at current price $${price}.\n\nView stock details: ${stockUrl}\n\nBest regards,\nThe Quanta Team`;
 
   const html = `
     ${emailHeader(subject)}
@@ -539,13 +539,13 @@ export const sendTradeConfirmationEmail = async ({ toEmail, name, tradeDetails, 
   const { symbol, shares, price, total, type, referenceId } = tradeDetails;
   const isBuy = (type || 'BUY').toUpperCase() === 'BUY';
   const subject = `Trade Executed: ${type} ${shares} ${symbol}`;
-  const text = `Hi ${name},\n\nYour ${type} order for ${shares} shares of ${symbol} has been executed at $${price} (Total: $${total}). Reference: ${referenceId}.\n\nNote: This is a simulated paper-trading execution.\n\nBest regards,\nThe MarketLens Team`;
+  const text = `Hi ${name},\n\nYour ${type} order for ${shares} shares of ${symbol} has been executed at $${price} (Total: $${total}). Reference: ${referenceId}.\n\nNote: This is a simulated paper-trading execution.\n\nBest regards,\nThe Quanta Team`;
 
   const html = `
     ${emailHeader(subject)}
       <h1 class="h1">Trade Confirmation — Order Executed</h1>
       <p>Hi <strong>${name}</strong>,</p>
-      <p>Your order has been recorded and processed by the MarketLens execution engine.</p>
+      <p>Your order has been recorded and processed by the Quanta execution engine.</p>
 
       <div class="card-box">
         <table class="table-details">
@@ -560,7 +560,7 @@ export const sendTradeConfirmationEmail = async ({ toEmail, name, tradeDetails, 
       </div>
 
       <p style="font-size: 12px; color: #8da194; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px;">
-        ℹ️ <strong>Trading Disclaimer:</strong> MarketLens simulates executions using live market feeds for educational and portfolio testing purposes. No actual financial broker execution took place.
+        ℹ️ <strong>Trading Disclaimer:</strong> Quanta simulates executions using live market feeds for educational and portfolio testing purposes. No actual financial broker execution took place.
       </p>
 
       <div style="text-align: center; margin: 24px 0;">
@@ -577,7 +577,7 @@ export const sendTradeConfirmationEmail = async ({ toEmail, name, tradeDetails, 
  */
 export const sendWalletTopupEmail = async ({ toEmail, name, amount, newBalance, referenceId, method, userId }) => {
   const subject = `Wallet Credited: +$${Number(amount).toFixed(2)}`;
-  const text = `Hi ${name},\n\nYour MarketLens trading wallet has been successfully topped up with $${amount}. New Balance: $${newBalance}. Reference ID: ${referenceId}.\n\nBest regards,\nThe MarketLens Team`;
+  const text = `Hi ${name},\n\nYour Quanta trading wallet has been successfully topped up with $${amount}. New Balance: $${newBalance}. Reference ID: ${referenceId}.\n\nBest regards,\nThe Quanta Team`;
 
   const html = `
     ${emailHeader(subject)}
@@ -610,14 +610,14 @@ export const sendWalletTopupEmail = async ({ toEmail, name, amount, newBalance, 
  */
 export const sendPasswordResetEmail = async ({ toEmail, name, resetToken, userId }) => {
   const resetLink = `${getAppBaseUrl()}/login?resetToken=${encodeURIComponent(resetToken)}&email=${encodeURIComponent(toEmail)}`;
-  const subject = 'Reset your MarketLens password';
-  const text = `Hi ${name},\n\nA password reset was requested for your MarketLens account. Use this token: ${resetToken} or click: ${resetLink}\n\nThis link is valid for 30 minutes. If you did not request this, please ignore this email.`;
+  const subject = 'Reset your Quanta password';
+  const text = `Hi ${name},\n\nA password reset was requested for your Quanta account. Use this token: ${resetToken} or click: ${resetLink}\n\nThis link is valid for 30 minutes. If you did not request this, please ignore this email.`;
 
   const html = `
     ${emailHeader(subject)}
       <h1 class="h1">Password Reset Request</h1>
       <p>Hi <strong>${name}</strong>,</p>
-      <p>We received a request to reset the password for your MarketLens account.</p>
+      <p>We received a request to reset the password for your Quanta account.</p>
 
       <div class="card-box" style="text-align: center;">
         <span style="font-size: 13px; color: #8da194; text-transform: uppercase;">Reset Authorization Code</span>

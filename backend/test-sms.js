@@ -33,7 +33,7 @@ const client = twilio(accountSid, authToken);
 
 const payload = {
   to: targetPhone,
-  body: '🎉 MarketLens: Twilio SMS configuration is working properly!',
+  body: '🎉 Quanta: Twilio SMS configuration is working properly!',
 };
 
 if (messagingServiceSid) {

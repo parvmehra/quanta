@@ -189,7 +189,7 @@ export const notifyUser = async (user, eventType, data = {}) => {
           if (prefs.sms?.security) {
             results.sms = await sendSms({
               to: user.phone,
-              message: `Security Notice: A new sign-in to your MarketLens account was detected at ${new Date().toLocaleTimeString()}.`,
+              message: `Security Notice: A new sign-in to your Quanta account was detected at ${new Date().toLocaleTimeString()}.`,
               userId: user._id,
               eventType: 'LOGIN_ALERT',
               referenceId,

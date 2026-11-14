@@ -1,8 +1,8 @@
-import 'dotenv/config';
+import './config/env.js'; // loads .env and validates JWT_SECRET (exits if unsafe)
 import express from 'express';
+import helmet from 'helmet';
 import http from 'http';
 import { Server as SocketIO } from 'socket.io';
-import dotenv from 'dotenv';
 import cors from 'cors';
 import axios from 'axios';
 import stockRoutes from './routes/stockRoutes.js';
@@ -15,9 +15,9 @@ import cookieParser from "cookie-parser";
 import crypto from 'crypto';
 // import connectDB from './config/connectDB.js';
 
-dotenv.config();
-
-const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:5175,http://127.0.0.1:5176,https://marketlens02.netlify.app,https://www.marketlens02.netlify.app,https://marketlens-stock-analyzer.onrender.com")
+// Comma-separated list of extra allowed origins (e.g. your deployed frontend URL).
+// localhost / 127.0.0.1 on any port are always allowed for local development.
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173,http://127.0.0.1:5173")
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -48,6 +48,7 @@ const io = new SocketIO(server, {
   },
 });
 
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({
   origin: function (origin, callback) {
     if (isOriginAllowed(origin)) {
@@ -70,6 +71,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/protfolio', protfolioRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/wallet', walletRoutes);
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'quanta', time: Date.now() }));
 
 // ─── Live price broadcasting ────────────────────────────────────────
 const AV_BASE = 'https://www.alphavantage.co/query';
