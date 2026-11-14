@@ -1,0 +1,163 @@
+# Quanta — Implementation Plan
+
+Companion to `PROJECT_AUDIT.md`. Nothing below has started. **Phase 1+ begins only after the owner approves this plan and answers the decisions in §2.**
+
+Principles: no rewrite; app stays runnable (`backend: npm run dev`, `frontend: npm run dev`) at the end of every phase; every phase ends with a baseline commit/tag, a test run and a short report.
+
+---
+
+## 1. Key finding that changes the order of work
+
+The brief's phase order puts the backend (Phase 6) last. The audit shows the trading and wallet flows are **client-authoritative** (S1, S3) and the data store is a tracked JSON file (S2). Redesigning the Trading Terminal and Portfolio (Phase 4) on top of that would polish an insecure, non-functional core, and it would force a second UI rewrite when the API contract changes.
+
+**Proposed adjustment:** keep the brief's phases, but split Phase 6 into a small **Phase 1B (security hygiene + trade API contract)** executed right after the design foundation, and keep the large MongoDB migration where the brief put it but **before** the Phase 4 UI work that depends on it. Details below.
+
+## 2. Decisions requested (blocking where marked)
+
+| # | Decision | Recommendation |
+|---|---|---|
+| D1 | **Tailwind.** Brief says Tailwind; project uses vanilla CSS and has no Tailwind. | Do **not** add Tailwind. Build the design system with CSS custom properties (`tokens.css`) plus a small set of shared component classes. Fewer dependencies, no build-config change, lowest regression risk with 6 existing CSS files. Reconsider only if you specifically want Tailwind for the portfolio story. **Blocking for Phase 1.** |
+| D2 | **Git history contains `backend/data.json` (user records/password hashes).** | Untrack it now and add to `.gitignore`. Rewriting history (`git filter-repo`) is destructive and only matters if this repo is, or has been, pushed anywhere public; tell me whether it has. |
+| D3 | **Credential rotation.** `backend/.env` and a Google service-account key sit in the working tree. | You rotate: Mongo user, Gmail app password, Twilio token, Gemini/Finnhub keys, Firebase key. I will not read, print or move them. |
+| D4 | **MongoDB.** Is there an Atlas cluster (M0 free tier is a replica set, so multi-document transactions work)? Is the existing `MONGO_DB_URI` a cluster you want to use? | Use Atlas M0; verify transaction support at startup and refuse to run trading in "unsafe" mode. |
+| D5 | **Existing JSON data.** ~25 user records (likely test/real mixed). | One-off import script for users and holdings; wallet balances re-based. Or start clean — your call. |
+| D6 | **Mandatory email-OTP on every login.** Currently every sign-in requires an e-mailed code. | Keep (it's a feature) but make it opt-in per user and keep it working in demo mode. Ask if you want it left as-is. |
+| D7 | **Market segment.** Existing code mixes US (`$`) and NSE/BSE (`₹`) symbols; wallet is USD only. | Keep both exchanges, wallet stays USD, show per-symbol currency, no FX conversion (documented). Alternatively add a simple wallet-currency note. |
+| D8 | **Order types.** Today MARKET/LIMIT/SL all fill instantly. | Implement real semantics: MARKET fills immediately; LIMIT and SL (stop) rest as OPEN orders and are evaluated by a small in-process check on each quote refresh (no workers, no Redis). MIS/CNC product types and their 20% margin: **keep or drop?** I recommend dropping MIS leverage (a paper-trading simplification) unless you rely on it. |
+| D9 | **Support chat.** Not in the brief. | Keep, but require auth for sockets, restrict `join_admin` to `role==='admin'`, move to Mongo. |
+| D10 | **Naming.** `protfolio` typo is in URLs. | Add `/api/portfolio` as the canonical route; keep `/api/protfolio` as an alias until the frontend is migrated, then remove (documented). |
+
+## 3. Phases
+
+### Phase 0 — Audit ✅ (this deliverable)
+Output: `docs/PROJECT_AUDIT.md`, `docs/IMPLEMENTATION_PLAN.md`.
+Not yet done and needed for runtime confirmation: start both servers, exercise each flow, capture console errors. Moved to **Phase 1 step 0**.
+
+### Phase 1 — Baseline, hygiene, foundation (design system)
+
+**1.0 Baseline and hygiene** (small, reversible)
+- Commit the current uncommitted work as `baseline: pre-quanta state` (excluding `.env*`, key files, `.data/`, `data.json`). Tag it.
+- `git rm --cached backend/data.json`; extend `.gitignore` (`.data/`, `data.json`, `serviceAccount*`, `*.log`, `cookies.txt`). Move live data out of the tree to a gitignored location, copy kept locally.
+- Fix `.env.example` for both apps (names only; add `GMAIL_*`, `ALPHA_VANTAGE`, `DEMO_MODE`, `JWT_SECRET` required; remove unused Razorpay/TwelveData).
+- Make the server **fail fast** if `JWT_SECRET` is missing or equals the old fallback.
+- Run both servers and record a **runtime smoke-test matrix** (each route loads, login works, quote/history/news/market-pulse respond, console errors) appended to the audit as §14.
+- Reconcile ports (`3001` everywhere) and rewrite `AGENTS.md`/`.agents/rules` to match reality.
+
+**1.1 Design system** (frontend only)
+- `frontend/src/styles/tokens.css`: colours, spacing, radii, type scale, z-index, as CSS variables, light/dark via `[data-theme]`. Existing `ThemeContext` kept.
+- Inter via `@fontsource-variable/inter` (local, no Google CDN request) — *small new dependency, needs approval* — or system-font fallback if not approved.
+- `layouts/AppShell.jsx`: collapsible sidebar, top bar (global search, market status, notifications, user menu), content outlet; mobile drawer.
+- UI primitives only where reused ≥3 times: `Button`, `Input`, `Select`, `Tabs`, `DataTable`, `Stat`, `Badge`, `Skeleton`, `EmptyState`, `ErrorState`, `Modal`, `ChangeValue` (colour + sign + arrow, never colour alone).
+- Utilities: consolidate number/currency/percent formatting into `utils/format.js`; keep `utils/currency.js` behaviour.
+- Router: add shell, add `*` 404, keep **all existing routes**. Sidebar entries that lack a page yet link to the closest existing page or are hidden until the page exists (no placeholder pages).
+- Rename strings/branding to Quanta (title, logo, emails, footer, FAQ/About copy).
+
+*Done when:* both servers start from clean `npm install`; all 9 existing routes render inside the new shell; no new console errors; ESLint errors from the audit (49) down to 0 in touched files; baseline tag + report.
+
+### Phase 1B — Security fixes that don't need Mongo (backend, small diffs)
+- Remove JWT fallback (done in 1.0), stop returning `debugCode` except when `DEMO_MODE=true` **and** `NODE_ENV!=='production'`; use `crypto.randomInt` for codes; add limiters to `verify-email`, `reset-password`, `resend-login-otp`; make resend generic.
+- Google sign-in: require a verified Firebase ID token; remove the body-trust fallback; require `email_verified`.
+- Socket.IO: auth middleware (JWT from handshake), per-socket limits (≤ 20 symbol subscriptions, validated symbol format), `join_admin` only for admins, chat rooms scoped to the user's own id.
+- Auth-protect `/stocks/advisor` and `/stocks/cache/clear` (admin only); rate-limit market endpoints (`express-rate-limit`, already installed).
+- Add `helmet`? *(new dependency, tiny; needs approval).* Body size limit, error handler that never leaks `err.message`.
+- Input validation on portfolio routes and bulk import (hand-written validators in `validators/`; no Zod/Joi unless approved).
+
+*Done when:* manual abuse tests fail as expected (forged token, fake admin join, unauthenticated advisor, over-large body).
+
+### Phase 6A (pulled forward) — MongoDB migration and server-side trade engine
+Needed before Phases 3–5 touch trading/portfolio/wallet screens.
+
+**Schemas (Mongoose, new files; old models replaced):**
+- `User` (existing fields preserved: role, verification, lockout, notification prefs, phone), index `email` unique.
+- `Wallet` embedded in User or its own doc: `balance` stored as integer cents (or Decimal128) — decision on money type documented.
+- `Holding` { userId, symbol, quantity, avgCost, currency } unique `(userId, symbol)`.
+- `Order` { userId, symbol, side, type MARKET|LIMIT|SL, qty, limitPrice, stopPrice, status OPEN|FILLED|CANCELLED|REJECTED, clientOrderId (unique with userId for idempotency), fillPrice, fees, timestamps }.
+- `LedgerEntry` (append-only) { userId, kind TOPUP|BUY|SELL|FEE, amount, balanceAfter, orderId, ref }.
+- `Subscription`, `NotificationLog`, `ChatMessage`, `Watchlist` { userId, name, symbols[] } (moves watchlists from localStorage to server, fulfilling Phase 5).
+
+**Trade engine (`services/tradeService.js`):**
+- `POST /api/orders` (auth): body = `{symbol, side, type, qty, limitPrice?, stopPrice?, clientOrderId}`. Server fetches its **own** quote (stale-guard, reject when only mock/unknown), validates qty (positive, integral for equities), computes fees server-side, then within a Mongo transaction: check balance/holdings, upsert holding with weighted-average cost, write order + ledger, debit/credit wallet. Idempotent on `clientOrderId`.
+- MARKET fills immediately; LIMIT/SL stay OPEN and are evaluated on each refresh by `orderMatcher` (single in-process interval, only while OPEN orders exist, bounded batch size).
+- `GET /api/orders`, `DELETE /api/orders/:id` (cancel), `GET /api/positions`, `GET /api/ledger`, `GET /api/wallet` (reads the ledger).
+- `POST /api/wallet/topup` becomes a **clearly labelled simulated deposit** with a per-day cap and ledger entry; no client-supplied reference ids.
+- Realised P&L computed from the ledger at sell time and stored on the SELL ledger entry; unrealised from live quote.
+- If the deployment does **not** support transactions, stop and report (per the brief); fallback proposal: single-document wallet with `$inc` guarded by `balance >= x` and holdings in the same document array. 
+
+**Migration:** `scripts/importLegacyJson.js` reads the gitignored JSON file, hashes untouched, maps IDs, flags suspicious data. Dry-run mode.
+
+**Compatibility:** keep `/api/protfolio` read endpoints working through the new `Holding` data during the frontend migration; remove client-side wallet in localStorage.
+
+*Done when:* the financial test suite passes (see §4), a concurrent double-submit test leaves the balance correct, server restart preserves state, and the JSON store is no longer used by any route.
+
+### Phase 2 — Dashboard, market overview, stock explorer
+- New `Dashboard` (default post-login), `MarketOverview`, `StockExplorer` (successor of `StockAnalyzer`, keep `/analyzer` as redirect).
+- Data hooks: `useQuotes(symbols)`, `useMarketPulse()`, `useHistory(symbol, range)` with request dedupe, abort on unmount, shared in-memory cache, visible **source / as-of / delayed-or-live** badges.
+- Backend: add `GET /api/market/movers` (gainers/losers/most active from a Yahoo screener or a bounded default universe — to be chosen by what the provider supports; label the universe). Remove random mock data from responses; return `503 {code:'DATA_UNAVAILABLE'}` or `demo:true` payloads depending on `DEMO_MODE`.
+- Replace client-side `Math.random()` "live" ticks with real socket/polled data, or no animation.
+- Sparklines in tables only with real history (batch endpoint to avoid N requests).
+
+*Done when:* every number on those pages traces to an API response; with the network offline the pages show unavailable states, not invented prices.
+
+### Phase 3 — Stock research
+- `StockDetails` → tabs Overview / Chart / Fundamentals / News; timeframe selector; volume sub-chart; Lightweight Charts for candles, Recharts for simple series.
+- Backend: `GET /api/stocks/fundamentals/:symbol` using `yahooFinance.quoteSummary` modules actually available; fields missing → `null`, UI shows "—" (never 0).
+- Fix the socket poller (batch Yahoo quote, ≥15 s interval, bounded symbols) so the live price header is genuine.
+- Related stocks: only if the provider returns recommendations; otherwise omit.
+
+### Phase 4 — Trading terminal and portfolio (on the new API)
+- Terminal 3-column layout (watchlist/search | chart | order ticket), tabs below for Open orders / Order history / Trades / Positions, all from server endpoints.
+- Remove local wallet/trade state; show "Simulated — not a real exchange order" in the ticket and confirmation.
+- Portfolio: totals, invested, current value, realised/unrealised P&L, allocation (Recharts donut), sector allocation only if `quoteSummary` provides sector, holdings table, ledger-backed history, CSV import wired to a validated bulk endpoint that creates holdings plus an `IMPORT` ledger entry (no wallet debit; documented).
+- Replace inline math with shared `utils/` functions (also used by tests).
+- Wallet page: balance, ledger table, simulated top-up.
+
+### Phase 5 — Supporting functionality
+- Watchlists on the server (multiple lists, add/remove, sort, search); migrate existing localStorage list on first load.
+- AI Advisor page: reuse `geminiAdvisorService`; conversation UI, suggested prompts, stock context, "AI-generated, not investment advice" label, key in a header (not in the URL), works without key via the existing rule-based fallback and says so.
+- Notifications centre page (reads `notificationLogs` + in-app events), Settings page (notification prefs, theme, DEMO info), Profile (name/password change via authenticated endpoints), FAQ/About refreshed to match reality.
+- Support chat restyle.
+
+### Phase 6B — Remaining backend hardening
+Structured logging (no PII/codes), centralised error handler, config validation at boot (zod-free), remove dead files (`controllers/protfolio.js`, old models, `ws`, `react-hook-form`, `TradingContext.jsx`, stale seed script — each removal listed in a changelog), indexes review, graceful shutdown.
+
+### Phase 7 — QA
+Full manual workflow pass, responsive pass (360, 768, 1024, 1440), accessibility pass (focus, contrast, keyboard), clean-clone install test, docs final (`README.md`, `ARCHITECTURE.md`, API reference, schema doc, financial-calculation doc).
+
+## 4. Test strategy
+
+- Backend: Node's built-in `node:test` (already used) + `mongodb-memory-server` **only if approved** (dev-dependency, downloads a binary) — otherwise tests run against a dedicated Atlas database named in `.env.test`.
+- Financial tests (mandatory before Phase 4 sign-off): buy, sell, insufficient balance, invalid/zero/negative/fractional qty, sell more than owned, duplicate `clientOrderId`, 20 concurrent buys exhausting balance, weighted average cost after multiple buys, realised P&L after partial sell, ledger sum equals balance, ownership isolation between two users.
+- Security tests: forged/expired JWT, no-secret boot refusal, socket without token, non-admin `join_admin`, unauthenticated advisor/cache clear, rate limiter responses.
+- Frontend: Vitest + React Testing Library **only if approved**; otherwise `node --test` for pure utils and a written manual checklist per page.
+- Existing 8 tests stay; production code switched to import those helpers.
+
+## 5. Dependency changes (all subject to your approval)
+
+| Action | Package | Reason |
+|---|---|---|
+| Remove | `ws` (backend), `react-hook-form` (frontend) | Not imported anywhere |
+| Move | `nodemon` → devDependencies | build hygiene |
+| Decide | `node-cache` | currently unused; either use it for the market-data cache or remove it |
+| Add (optional) | `helmet` | security headers, ~tiny |
+| Add (optional) | `@fontsource-variable/inter` | local Inter font |
+| Add (optional, dev) | `vitest`, `@testing-library/react`, `mongodb-memory-server` | automated tests |
+| Not adding | Tailwind, Redis, Docker, state libraries, ORMs | per brief and D1 |
+
+## 6. Local development impact
+
+No change to the workflow: `cd backend && npm install && npm run dev`; `cd frontend && npm install && npm run dev`. New requirement: `MONGO_DB_URI` pointing at Atlas (Phase 6A onward) and a real `JWT_SECRET`. `DEMO_MODE=true` will allow running without Mongo? **No** — without Mongo the trading features cannot be safe; the app will boot and show data-unavailable states for those pages instead of falling back to a JSON file. (Decision D4/D5 may change this.) Optional services (SMTP, Twilio, Gemini, Firebase, Finnhub) stay optional.
+
+## 7. Risks
+
+| Risk | Mitigation |
+|---|---|
+| Yahoo unofficial API throttling or schema drift | single provider module, cache TTLs (quote 15–30 s, history 5 min), explicit unavailable state, `DEMO_MODE` |
+| Mongo transactions unavailable on the chosen cluster | verify at boot; stop and propose alternative (don't weaken integrity) |
+| Mixed currencies in one USD wallet | documented limitation (D7) |
+| Large page files (Hero 778, TradingTerminal 1388 lines) are risky to restyle | restyle incrementally behind the shell; extract only components that are reused |
+| Existing users’ sessions | JWT format unchanged; secret change invalidates sessions — announce, or accept one forced re-login |
+| History still contains hashes | decision D2 |
+
+## 8. Phase completion checklist (applies to every phase)
+
+1. `npm install` clean on both apps. 2. Both dev servers start. 3. Affected routes load; no new console errors. 4. Relevant tests pass. 5. ESLint clean on touched files. 6. Docs updated. 7. Report: what changed, what is outstanding, any limitation documented rather than hidden.

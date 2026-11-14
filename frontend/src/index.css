@@ -1,0 +1,308 @@
+/* ============================================
+   MarketLens — Design System (Dark Fintech)
+   ============================================ */
+
+/* === DESIGN TOKENS === */
+:root {
+  /* Surfaces */
+  --bg-body:      #0F1412;
+  --bg-card:      #1A1F1C;
+  --bg-elevated:  #242B27;
+  --bg-input:     #242B27;
+  --bg-hover:     #2C342F;
+
+  /* Borders */
+  --border:       rgba(255,255,255,0.08);
+  --border-hover: rgba(255,255,255,0.14);
+  --border-strong:rgba(255,255,255,0.2);
+
+  /* Text */
+  --text-1:       #E6ECE8;
+  --text-2:       #9CA6A0;
+  --text-3:       #637068;
+
+  /* Brand Accent */
+  --accent:       #F59E0B;
+  --accent-hover: #D97706;
+  --accent-dim:   rgba(245, 158, 11, 0.12);
+  --accent-glow:  rgba(245, 158, 11, 0.3);
+
+  /* Secondary Accent */
+  --accent2:      #3B82F6;
+  --accent2-dim:  rgba(59, 130, 246, 0.12);
+
+  /* Financial Semantics */
+  --green:        #22C55E;
+  --green-dim:    rgba(34, 197, 94, 0.12);
+  --red:          #EF4444;
+  --red-dim:      rgba(239, 68, 68, 0.12);
+  --yellow:       #F59E0B;
+
+  /* Typography */
+  --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    'Inter', ui-monospace, monospace;
+
+  /* Shape */
+  --radius-sm:  4px;
+  --radius:     6px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+
+  /* Motion */
+  --transition: 150ms ease;
+
+  /* Elevation */
+  --shadow-sm:  0 1px 4px rgba(0,0,0,0.4);
+  --shadow-md:  0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.6);
+}
+
+/* === RESET === */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-body);
+  color: var(--text-1);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul, ol { list-style: none; }
+img { max-width: 100%; display: block; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  outline: none;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
+  outline: none;
+  background: var(--bg-input);
+  color: var(--text-1);
+  padding: 9px 14px;
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-3);
+}
+
+/* === LAYOUT === */
+.container {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (max-width: 480px) {
+  .container { padding: 0 16px; }
+}
+
+/* === BUTTONS === */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  transition: all var(--transition);
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  letter-spacing: -0.01em;
+}
+
+.btn-primary {
+  background: var(--bg-elevated);
+  color: var(--text-1);
+  border-color: var(--border-hover);
+}
+
+.btn-primary:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: #0F1412;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+
+.btn-accent:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-1);
+  border-color: var(--border-hover);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-2);
+  border-color: transparent;
+}
+
+.btn-ghost:hover {
+  color: var(--text-1);
+  background: var(--bg-elevated);
+}
+
+.btn-lg {
+  padding: 12px 24px;
+  font-size: 0.9375rem;
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+}
+
+/* === SEMANTIC TEXT === */
+.positive { color: var(--green) !important; }
+.negative { color: var(--red) !important; }
+
+/* === UTILITY === */
+.text-right  { text-align: right; }
+.text-center { text-align: center; }
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.01em;
+}
+
+/* === SECTION EYEBROW === */
+.section-eyebrow {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-2);
+  margin-bottom: 12px;
+}
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+::selection {
+  background: rgba(245, 158, 11, 0.25);
+  color: var(--text-1);
+}
+
+/* === ANIMATIONS === */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(14px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+  animation: fadeInUp 0.4s ease forwards;
+  opacity: 0;
+}
+
+.animate-spin {
+  animation: spin 0.8s linear infinite;
+}
+
+/* === SKELETON === */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-hover) 50%, var(--bg-elevated) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius);
+}
+
+/* === MOBILE === */
+@media (max-width: 480px) {
+  html { font-size: 15px; }
+  .btn { padding: 8px 16px; font-size: 0.85rem; }
+  .btn-lg { padding: 10px 20px; font-size: 0.9rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

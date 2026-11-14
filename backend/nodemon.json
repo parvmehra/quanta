@@ -1,0 +1,18 @@
+{
+  "watch": [
+    "routes/",
+    "services/",
+    "middlewares/",
+    "config/",
+    "index.js",
+    "dataStore.js"
+  ],
+  "ignore": [
+    "data.json",
+    "*.json",
+    "logs/*",
+    "node_modules/*"
+  ],
+  "ext": "js,mjs,cjs"
+}
+
