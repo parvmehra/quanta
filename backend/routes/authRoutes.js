@@ -1,44 +1,47 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { protect } from '../middlewares/auth.js';
-import { store, saveStore } from '../dataStore.js';
+import { requireDb } from '../middlewares/requireDb.js';
+import User from '../models/User.js';
+import NotificationLog from '../models/NotificationLog.js';
 import { notifyUser } from '../services/notificationService.js';
-import { sendPhoneVerificationOtp, verifyPhoneOtp, isValidE164 } from '../services/smsService.js';
+import { sendPhoneVerificationOtp, verifyPhoneOtp } from '../services/smsService.js';
 import admin from '../config/firebase.js';
-import { JWT_SECRET } from '../config/env.js';
+import { JWT_SECRET, IS_PRODUCTION } from '../config/env.js';
+import { sixDigitCode, hashCode, safeEqualHex } from '../utils/codes.js';
 
 const router = express.Router();
+router.use(requireDb);
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { message: 'Too many authentication attempts. Please try again after 15 minutes.' },
+const limiter = (windowMin, max, message) => rateLimit({
+  windowMs: windowMin * 60 * 1000,
+  max,
+  message: { message },
   standardHeaders: true,
   legacyHeaders: false,
 });
+const authLimiter = limiter(15, 20, 'Too many authentication attempts. Please try again after 15 minutes.');
+const verifyLimiter = limiter(15, 15, 'Too many verification attempts. Please try again later.');
+const otpLimiter = limiter(10, 6, 'Too many code requests. Please try again later.');
 
-const otpLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 6,
-  message: { message: 'Too many OTP requests. Please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+const DAY = 24 * 60 * 60 * 1000;
+const MAX_CODE_ATTEMPTS = 5;
+const debugOnly = (code) => (IS_PRODUCTION ? undefined : code);
 
-const isSecureRequest = (req) => {
-  return process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https';
-};
+const isSecureRequest = (req) => IS_PRODUCTION || req.secure || req.headers['x-forwarded-proto'] === 'https';
+const generateToken = (userId) => jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '7d' });
 
-const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '7d' });
+const setAuthCookie = (req, res, token) => {
+  const secure = isSecureRequest(req);
+  res.cookie('token', token, { httpOnly: true, secure, sameSite: secure ? 'none' : 'lax', maxAge: 7 * DAY });
 };
 
 const validatePasswordStrength = (password) => {
   if (!password || typeof password !== 'string') return 'Password is required.';
   if (password.length < 8) return 'Password must be at least 8 characters long.';
+  if (password.length > 128) return 'Password is too long.';
   if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter.';
   if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter.';
   if (!/[0-9]/.test(password)) return 'Password must contain at least one number.';
@@ -46,10 +49,11 @@ const validatePasswordStrength = (password) => {
 };
 
 const validateEmailFormat = (email) => {
-  if (!email || typeof email !== 'string') return false;
-  const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  return re.test(email.trim().toLowerCase());
+  if (!email || typeof email !== 'string' || email.length > 254) return false;
+  return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email.trim().toLowerCase());
 };
+
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
 const formatUserResponse = (user) => ({
   id: user._id,
@@ -60,147 +64,107 @@ const formatUserResponse = (user) => ({
   phone: user.phone || '',
   isPhoneVerified: !!user.isPhoneVerified,
   phonePromptDismissed: !!user.phonePromptDismissed,
-  wallet: user.wallet || { balance: 500000, currency: 'USD' },
-  notificationPreferences: user.notificationPreferences || {
-    email: { security: true, subscriptions: true, trades: true, wallet: true, market: false },
-    sms: { security: true, subscriptions: false, trades: true, wallet: true, market: false },
-  },
+  notificationPreferences: user.notificationPreferences,
 });
+
+const clientInfo = (req) => ({
+  ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+  userAgent: req.headers['user-agent'] || 'Web Browser',
+});
+
+async function issueEmailVerification(user) {
+  const code = sixDigitCode();
+  user.emailVerificationToken = hashCode(code);
+  user.emailVerificationExpires = Date.now() + DAY;
+  await user.save();
+  await notifyUser(user, 'EMAIL_VERIFICATION', { token: code });
+  return code;
+}
+
+async function issueLoginOtp(user) {
+  const code = sixDigitCode();
+  user.loginOtp = hashCode(code);
+  user.loginOtpExpires = Date.now() + 10 * 60 * 1000;
+  user.loginOtpAttempts = 0;
+  await user.save();
+  await notifyUser(user, 'LOGIN_OTP', { otp: code });
+  return code;
+}
 
 router.get('/me', protect, async (req, res) => {
   try {
-    const user = store.users.find(u => u._id === req.user._id);
+    const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json({ user: formatUserResponse(user) });
-  } catch (err) {
+  } catch {
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.post('/signup', authLimiter, async (req, res) => {
-  const { name, email, password } = req.body;
-
+  const { name, email, password } = req.body || {};
   try {
-    if (!name || name.trim().length < 2) {
+    if (!name || typeof name !== 'string' || name.trim().length < 2 || name.length > 100) {
       return res.status(400).json({ message: 'Please provide a valid full name.' });
     }
-
-    if (!validateEmailFormat(email)) {
-      return res.status(400).json({ message: 'Please provide a valid email address.' });
-    }
-
+    if (!validateEmailFormat(email)) return res.status(400).json({ message: 'Please provide a valid email address.' });
     const pwdError = validatePasswordStrength(password);
-    if (pwdError) {
-      return res.status(400).json({ message: pwdError });
-    }
+    if (pwdError) return res.status(400).json({ message: pwdError });
 
-    const normalizedEmail = email.trim().toLowerCase();
-
-    let existingUser = store.users.find(u => u.email === normalizedEmail);
-    if (existingUser) {
-      if (existingUser.isEmailVerified) {
+    const normalizedEmail = normalizeEmail(email);
+    const existing = await User.findOne({ email: normalizedEmail });
+    if (existing) {
+      if (existing.isEmailVerified) {
         return res.status(400).json({ message: 'An account with this email already exists. Please sign in.' });
       }
-      const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
-      existingUser.emailVerificationToken = crypto.createHash('sha256').update(verifyCode).digest('hex');
-      existingUser.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000;
-      saveStore();
-
-      await notifyUser(existingUser, 'EMAIL_VERIFICATION', { token: verifyCode });
-
+      const code = await issueEmailVerification(existing);
       return res.status(200).json({
         requiresVerification: true,
-        email: existingUser.email,
+        email: existing.email,
         message: 'A fresh verification code has been sent to your email address.',
-        debugCode: process.env.NODE_ENV !== 'production' ? verifyCode : undefined,
+        debugCode: debugOnly(code),
       });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedVerifyToken = crypto.createHash('sha256').update(verifyCode).digest('hex');
-
-    const newUser = {
-      _id: crypto.randomUUID(),
+    const user = await User.create({
       name: name.trim(),
       email: normalizedEmail,
-      password: hashedPassword,
-      role: 'user',
-      isEmailVerified: false,
-      emailVerificationToken: hashedVerifyToken,
-      emailVerificationExpires: Date.now() + 24 * 60 * 60 * 1000,
-      phone: '',
-      isPhoneVerified: false,
-      phonePromptDismissed: false,
-      failedLoginAttempts: 0,
-      lockoutUntil: null,
-      wallet: {
-        balance: 500000,
-        currency: 'USD',
-      },
-      notificationPreferences: {
-        email: { security: true, subscriptions: true, trades: true, wallet: true, market: false },
-        sms: { security: true, subscriptions: false, trades: true, wallet: true, market: false },
-      },
-      createdAt: Date.now(),
-      lastLogin: null,
-    };
-
-    store.users.push(newUser);
-    saveStore();
-
-    await notifyUser(newUser, 'EMAIL_VERIFICATION', { token: verifyCode });
-
-    await notifyUser(newUser, 'SIGNUP_WELCOME');
+      password: await bcrypt.hash(password, 10),
+    });
+    const code = await issueEmailVerification(user);
+    await notifyUser(user, 'SIGNUP_WELCOME');
 
     res.status(201).json({
       requiresVerification: true,
-      email: newUser.email,
+      email: user.email,
       message: 'Registration successful! We have sent a verification code to your email.',
-      debugCode: process.env.NODE_ENV !== 'production' ? verifyCode : undefined,
+      debugCode: debugOnly(code),
     });
   } catch (err) {
-    console.error('Registration error:', err);
+    if (err?.code === 11000) return res.status(400).json({ message: 'An account with this email already exists. Please sign in.' });
+    console.error('Registration error:', err.message);
     res.status(500).json({ message: 'Server error during registration.' });
   }
 });
 
-router.post('/verify-email', async (req, res) => {
-  const { email, token } = req.body;
-
-  if (!email || !token) {
-    return res.status(400).json({ message: 'Email and verification code are required.' });
-  }
+router.post('/verify-email', verifyLimiter, async (req, res) => {
+  const { email, token } = req.body || {};
+  if (!email || !token) return res.status(400).json({ message: 'Email and verification code are required.' });
 
   try {
-    const normalizedEmail = email.trim().toLowerCase();
-    const user = store.users.find(u => u.email === normalizedEmail);
-
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid verification request.' });
-    }
+    const user = await User.findOne({ email: normalizeEmail(email) });
+    if (!user) return res.status(400).json({ message: 'Invalid verification request.' });
 
     if (user.isEmailVerified) {
-      const jwtToken = generateToken(user._id);
-      return res.json({
-        message: 'Account already verified.',
-        token: jwtToken,
-        user: formatUserResponse(user),
-      });
+      return res.status(400).json({ message: 'This account is already verified. Please sign in.' });
     }
-
     if (!user.emailVerificationToken || !user.emailVerificationExpires) {
       return res.status(400).json({ message: 'No pending verification found. Please request a new code.' });
     }
-
     if (Date.now() > user.emailVerificationExpires) {
       return res.status(400).json({ message: 'Verification code has expired. Please request a new one.' });
     }
-
-    const hashedInput = crypto.createHash('sha256').update(String(token).trim()).digest('hex');
-    if (hashedInput !== user.emailVerificationToken) {
+    if (!safeEqualHex(hashCode(token), user.emailVerificationToken)) {
       return res.status(400).json({ message: 'Invalid verification code. Please check your email.' });
     }
 
@@ -208,86 +172,45 @@ router.post('/verify-email', async (req, res) => {
     user.emailVerificationToken = null;
     user.emailVerificationExpires = null;
     user.lastLogin = Date.now();
-
     if (!user.welcomeEmailSent) {
       user.welcomeEmailSent = true;
       await notifyUser(user, 'WELCOME');
     }
-    saveStore();
-
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const userAgent = req.headers['user-agent'] || 'Web Browser';
-    await notifyUser(user, 'LOGIN_ALERT', { ip: clientIp, userAgent });
+    await user.save();
+    await notifyUser(user, 'LOGIN_ALERT', clientInfo(req));
 
     const jwtToken = generateToken(user._id);
-    const isSecure = isSecureRequest(req);
-
-    res.cookie('token', jwtToken, {
-      httpOnly: true,
-      secure: isSecure,
-      sameSite: isSecure ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    res.json({
-      message: 'Email verified successfully! Welcome to Quanta.',
-      token: jwtToken,
-      user: formatUserResponse(user),
-    });
+    setAuthCookie(req, res, jwtToken);
+    res.json({ message: 'Email verified successfully! Welcome to Quanta.', token: jwtToken, user: formatUserResponse(user) });
   } catch (err) {
-    console.error('Email verification error:', err);
+    console.error('Email verification error:', err.message);
     res.status(500).json({ message: 'Server error during verification.' });
   }
 });
 
 router.post('/resend-verification', authLimiter, async (req, res) => {
-  const { email } = req.body;
+  const { email } = req.body || {};
+  if (!validateEmailFormat(email)) return res.status(400).json({ message: 'Please provide a valid email address.' });
 
-  if (!email || !validateEmailFormat(email)) {
-    return res.status(400).json({ message: 'Please provide a valid email address.' });
-  }
-
+  const generic = { message: 'If an unverified account exists, a new verification code has been sent.' };
   try {
-    const normalizedEmail = email.trim().toLowerCase();
-    const user = store.users.find(u => u.email === normalizedEmail);
-
-    const genericSuccess = { message: 'If an unverified account exists, a new verification code has been sent.' };
-
-    if (!user || user.isEmailVerified) {
-      return res.json(genericSuccess);
-    }
-
-    const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
-    user.emailVerificationToken = crypto.createHash('sha256').update(verifyCode).digest('hex');
-    user.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000;
-    saveStore();
-
-    await notifyUser(user, 'EMAIL_VERIFICATION', { token: verifyCode });
-
-    res.json({
-      ...genericSuccess,
-      debugCode: process.env.NODE_ENV !== 'production' ? verifyCode : undefined,
-    });
+    const user = await User.findOne({ email: normalizeEmail(email) });
+    if (!user || user.isEmailVerified) return res.json(generic);
+    const code = await issueEmailVerification(user);
+    res.json({ ...generic, debugCode: debugOnly(code) });
   } catch (err) {
-    console.error('Resend verification error:', err);
+    console.error('Resend verification error:', err.message);
     res.status(500).json({ message: 'Server error.' });
   }
 });
 
 router.post('/login', authLimiter, async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required.' });
-  }
+  const { email, password } = req.body || {};
+  if (!email || !password || typeof password !== 'string') return res.status(400).json({ message: 'Email and password are required.' });
 
   try {
-    const normalizedEmail = email.trim().toLowerCase();
-    const user = store.users.find(u => u.email === normalizedEmail);
-
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials.' });
-    }
+    const user = await User.findOne({ email: normalizeEmail(email) });
+    if (!user) return res.status(400).json({ message: 'Invalid credentials.' });
 
     if (user.lockoutUntil && Date.now() < user.lockoutUntil) {
       const waitMins = Math.ceil((user.lockoutUntil - Date.now()) / 60000);
@@ -301,345 +224,247 @@ router.post('/login', authLimiter, async (req, res) => {
         user.lockoutUntil = Date.now() + 15 * 60 * 1000;
         user.failedLoginAttempts = 0;
       }
-      saveStore();
+      await user.save();
       return res.status(400).json({ message: 'Invalid credentials.' });
     }
 
     if (!user.isEmailVerified) {
-      const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
-      user.emailVerificationToken = crypto.createHash('sha256').update(verifyCode).digest('hex');
-      user.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000;
-      saveStore();
-
-      await notifyUser(user, 'EMAIL_VERIFICATION', { token: verifyCode });
-
+      const code = await issueEmailVerification(user);
       return res.status(403).json({
         requiresVerification: true,
         email: user.email,
         message: 'Your email address has not been verified yet. A verification code has been dispatched.',
-        debugCode: process.env.NODE_ENV !== 'production' ? verifyCode : undefined,
+        debugCode: debugOnly(code),
       });
     }
 
     user.failedLoginAttempts = 0;
     user.lockoutUntil = null;
-    
-    const loginOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.loginOtp = crypto.createHash('sha256').update(loginOtp).digest('hex');
-    user.loginOtpExpires = Date.now() + 10 * 60 * 1000;
-    saveStore();
-
-    await notifyUser(user, 'LOGIN_OTP', { otp: loginOtp });
+    const otp = await issueLoginOtp(user);
 
     res.json({
       requiresOtp: true,
       email: user.email,
       message: 'A 6-digit login verification code has been dispatched to your email.',
-      debugCode: process.env.NODE_ENV !== 'production' ? loginOtp : undefined,
+      debugCode: debugOnly(otp),
     });
   } catch (err) {
-    console.error('Login error:', err);
+    console.error('Login error:', err.message);
     res.status(500).json({ message: 'Server error during login.' });
   }
 });
 
 router.post('/verify-login-otp', authLimiter, async (req, res) => {
-  const { email, otp } = req.body;
-
-  if (!email || !otp) {
-    return res.status(400).json({ message: 'Email and 6-digit verification code are required.' });
-  }
+  const { email, otp } = req.body || {};
+  if (!email || !otp) return res.status(400).json({ message: 'Email and 6-digit verification code are required.' });
 
   try {
-    const normalizedEmail = email.trim().toLowerCase();
-    const user = store.users.find(u => u.email === normalizedEmail);
-
+    const user = await User.findOne({ email: normalizeEmail(email) });
     if (!user || !user.loginOtp || !user.loginOtpExpires) {
       return res.status(400).json({ message: 'No pending login code found. Please log in again.' });
     }
-
     if (Date.now() > user.loginOtpExpires) {
       user.loginOtp = null;
       user.loginOtpExpires = null;
-      saveStore();
+      await user.save();
       return res.status(400).json({ message: 'Verification code has expired. Please log in again.' });
     }
-
-    const hashedInput = crypto.createHash('sha256').update(otp.trim()).digest('hex');
-    if (hashedInput !== user.loginOtp) {
+    if (!safeEqualHex(hashCode(otp), user.loginOtp)) {
+      user.loginOtpAttempts = (user.loginOtpAttempts || 0) + 1;
+      if (user.loginOtpAttempts >= MAX_CODE_ATTEMPTS) {
+        user.loginOtp = null;
+        user.loginOtpExpires = null;
+        user.loginOtpAttempts = 0;
+        await user.save();
+        return res.status(400).json({ message: 'Too many incorrect codes. Please log in again to get a new one.' });
+      }
+      await user.save();
       return res.status(400).json({ message: 'Invalid verification code. Please check your email.' });
     }
 
     user.loginOtp = null;
     user.loginOtpExpires = null;
+    user.loginOtpAttempts = 0;
     user.failedLoginAttempts = 0;
     user.lockoutUntil = null;
     user.lastLogin = Date.now();
-    user.isEmailVerified = true;
-
     if (!user.welcomeEmailSent) {
       user.welcomeEmailSent = true;
       await notifyUser(user, 'WELCOME');
     }
-
-    saveStore();
-
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const userAgent = req.headers['user-agent'] || 'Web Browser';
-    await notifyUser(user, 'LOGIN_ALERT', { ip: clientIp, userAgent });
+    await user.save();
+    await notifyUser(user, 'LOGIN_ALERT', clientInfo(req));
 
     const token = generateToken(user._id);
-    const isSecure = isSecureRequest(req);
-
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: isSecure,
-      sameSite: isSecure ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    res.json({
-      token,
-      user: formatUserResponse(user),
-    });
+    setAuthCookie(req, res, token);
+    res.json({ token, user: formatUserResponse(user) });
   } catch (err) {
-    console.error('Verify login OTP error:', err);
+    console.error('Verify login OTP error:', err.message);
     res.status(500).json({ message: 'Server error during verification.' });
   }
 });
 
 router.post('/resend-login-otp', otpLimiter, async (req, res) => {
-  const { email } = req.body;
-  if (!email) {
-    return res.status(400).json({ message: 'Email address is required.' });
-  }
+  const { email } = req.body || {};
+  if (!validateEmailFormat(email)) return res.status(400).json({ message: 'Email address is required.' });
 
+  const generic = { success: true, message: 'If the account exists, a fresh login verification code has been sent.' };
   try {
-    const normalizedEmail = email.trim().toLowerCase();
-    const user = store.users.find(u => u.email === normalizedEmail);
-
-    if (!user) {
-      return res.status(400).json({ message: 'User not found.' });
-    }
-
-    const loginOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.loginOtp = crypto.createHash('sha256').update(loginOtp).digest('hex');
-    user.loginOtpExpires = Date.now() + 10 * 60 * 1000;
-    saveStore();
-
-    await notifyUser(user, 'LOGIN_OTP', { otp: loginOtp });
-
-    res.json({
-      success: true,
-      message: 'A fresh login verification code has been dispatched to your email.',
-      debugCode: process.env.NODE_ENV !== 'production' ? loginOtp : undefined,
-    });
+    const user = await User.findOne({ email: normalizeEmail(email) });
+    if (!user || !user.isEmailVerified) return res.json(generic);
+    const otp = await issueLoginOtp(user);
+    res.json({ ...generic, debugCode: debugOnly(otp) });
   } catch (err) {
-    console.error('Resend login OTP error:', err);
+    console.error('Resend login OTP error:', err.message);
     res.status(500).json({ message: 'Server error resending code.' });
   }
 });
 
-router.post('/google', async (req, res) => {
+router.post('/google', authLimiter, async (req, res) => {
   try {
-    let email, name, googleId, picture;
-
-    if (req.body.idToken && admin.apps.length) {
-      try {
-        const decodedToken = await admin.auth().verifyIdToken(req.body.idToken);
-        email = decodedToken.email;
-        name = decodedToken.name || decodedToken.email?.split('@')[0] || 'Google User';
-        googleId = decodedToken.uid;
-        picture = decodedToken.picture || '';
-      } catch (tokenErr) {
-        console.error('Firebase token verification failed:', tokenErr.message);
-        return res.status(401).json({ message: 'Invalid Google authentication token.' });
-      }
-    } else {
-      email = req.body.email;
-      name = req.body.name;
-      googleId = req.body.googleId;
+    if (!admin.apps.length) {
+      return res.status(503).json({ message: 'Google sign-in is not configured on this server.' });
+    }
+    if (!req.body?.idToken || typeof req.body.idToken !== 'string') {
+      return res.status(400).json({ message: 'A Google authentication token is required.' });
     }
 
-    if (!email || !name) {
-      return res.status(400).json({ message: 'Email and name are required from Google.' });
+    let decoded;
+    try {
+      decoded = await admin.auth().verifyIdToken(req.body.idToken);
+    } catch {
+      return res.status(401).json({ message: 'Invalid Google authentication token.' });
+    }
+    if (!decoded.email || decoded.email_verified !== true) {
+      return res.status(401).json({ message: 'Your Google account email is not verified.' });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-    let user = store.users.find(u => u.email === normalizedEmail);
+    const email = normalizeEmail(decoded.email);
+    const name = (decoded.name || email.split('@')[0] || 'Google User').slice(0, 100);
+    let user = await User.findOne({ email });
 
     if (!user) {
-      user = {
-        _id: crypto.randomUUID(),
-        name: name.trim(),
-        email: normalizedEmail,
-        googleId: googleId || crypto.randomUUID(),
-        picture: picture || '',
-        password: await bcrypt.hash(crypto.randomUUID(), 10),
-        role: 'user',
+      user = await User.create({
+        name,
+        email,
+        googleId: decoded.uid,
+        picture: decoded.picture || '',
+        password: await bcrypt.hash(sixDigitCode() + decoded.uid, 10),
         isEmailVerified: true,
-        phone: '',
-        isPhoneVerified: false,
-        phonePromptDismissed: false,
-        wallet: { balance: 500000, currency: 'USD' },
-        notificationPreferences: {
-          email: { security: true, subscriptions: true, trades: true, wallet: true, market: false },
-          sms: { security: true, subscriptions: false, trades: true, wallet: true, market: false },
-        },
-        createdAt: Date.now(),
-        lastLogin: Date.now(),
         welcomeEmailSent: true,
-      };
-      store.users.push(user);
-      saveStore();
-
+        lastLogin: Date.now(),
+      });
       await notifyUser(user, 'WELCOME');
     } else {
       user.isEmailVerified = true;
       user.lastLogin = Date.now();
-      if (picture) user.picture = picture;
-
+      if (!user.googleId) user.googleId = decoded.uid;
+      if (decoded.picture) user.picture = decoded.picture;
       if (!user.welcomeEmailSent) {
         user.welcomeEmailSent = true;
         await notifyUser(user, 'WELCOME');
       }
-      saveStore();
+      await user.save();
     }
 
     const token = generateToken(user._id);
-    const isSecure = isSecureRequest(req);
-
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const userAgent = req.headers['user-agent'] || 'Web Browser';
-    await notifyUser(user, 'LOGIN_ALERT', { ip: clientIp, userAgent });
-
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: isSecure,
-      sameSite: isSecure ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    const requiresPhoneOnboarding = !user.isPhoneVerified && !user.phonePromptDismissed;
+    setAuthCookie(req, res, token);
+    await notifyUser(user, 'LOGIN_ALERT', clientInfo(req));
 
     res.json({
       token,
       user: formatUserResponse(user),
-      requiresPhoneOnboarding,
+      requiresPhoneOnboarding: !user.isPhoneVerified && !user.phonePromptDismissed,
     });
   } catch (err) {
-    console.error('Google Auth error:', err);
+    console.error('Google auth error:', err.message);
     res.status(500).json({ message: 'Server error during Google authentication.' });
   }
 });
 
 router.post('/forgot-password', authLimiter, async (req, res) => {
-  const { email } = req.body;
+  const { email } = req.body || {};
+  if (!validateEmailFormat(email)) return res.status(400).json({ message: 'Please provide a valid email address.' });
 
-  if (!email || !validateEmailFormat(email)) {
-    return res.status(400).json({ message: 'Please provide a valid email address.' });
-  }
-
+  const generic = { message: 'If an account matches that email, a password recovery code has been sent.' };
   try {
-    const normalizedEmail = email.trim().toLowerCase();
-    const user = store.users.find(u => u.email === normalizedEmail);
+    const user = await User.findOne({ email: normalizeEmail(email) });
+    if (!user) return res.json(generic);
 
-    const genericSuccess = { message: 'If an account matches that email, a password recovery code has been sent.' };
-    if (!user) return res.json(genericSuccess);
-
-    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-    user.resetPasswordToken = crypto.createHash('sha256').update(resetCode).digest('hex');
+    const code = sixDigitCode();
+    user.resetPasswordToken = hashCode(code);
     user.resetPasswordExpires = Date.now() + 30 * 60 * 1000;
-    saveStore();
+    user.resetPasswordAttempts = 0;
+    await user.save();
+    await notifyUser(user, 'PASSWORD_RESET', { resetToken: code });
 
-    await notifyUser(user, 'PASSWORD_RESET', { resetToken: resetCode });
-
-    res.json({
-      ...genericSuccess,
-      debugCode: process.env.NODE_ENV !== 'production' ? resetCode : undefined,
-    });
+    res.json({ ...generic, debugCode: debugOnly(code) });
   } catch (err) {
-    console.error('Forgot password error:', err);
+    console.error('Forgot password error:', err.message);
     res.status(500).json({ message: 'Server error.' });
   }
 });
 
-router.post('/reset-password', async (req, res) => {
-  const { email, token, newPassword } = req.body;
-
-  if (!email || !token || !newPassword) {
-    return res.status(400).json({ message: 'Email, token, and new password are required.' });
-  }
-
+router.post('/reset-password', verifyLimiter, async (req, res) => {
+  const { email, token, newPassword } = req.body || {};
+  if (!email || !token || !newPassword) return res.status(400).json({ message: 'Email, token, and new password are required.' });
   const pwdError = validatePasswordStrength(newPassword);
   if (pwdError) return res.status(400).json({ message: pwdError });
 
   try {
-    const normalizedEmail = email.trim().toLowerCase();
-    const user = store.users.find(u => u.email === normalizedEmail);
-
+    const user = await User.findOne({ email: normalizeEmail(email) });
     if (!user || !user.resetPasswordToken || !user.resetPasswordExpires) {
       return res.status(400).json({ message: 'Invalid or expired password reset request.' });
     }
-
     if (Date.now() > user.resetPasswordExpires) {
       return res.status(400).json({ message: 'Password reset code has expired. Please request a new one.' });
     }
-
-    const hashedInput = crypto.createHash('sha256').update(String(token).trim()).digest('hex');
-    if (hashedInput !== user.resetPasswordToken) {
+    if (!safeEqualHex(hashCode(token), user.resetPasswordToken)) {
+      user.resetPasswordAttempts = (user.resetPasswordAttempts || 0) + 1;
+      if (user.resetPasswordAttempts >= MAX_CODE_ATTEMPTS) {
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        user.resetPasswordAttempts = 0;
+      }
+      await user.save();
       return res.status(400).json({ message: 'Invalid password reset code.' });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
+    user.password = await bcrypt.hash(newPassword, 10);
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
+    user.resetPasswordAttempts = 0;
     user.failedLoginAttempts = 0;
     user.lockoutUntil = null;
-    saveStore();
+    await user.save();
 
     res.json({ message: 'Password has been successfully updated. You may now sign in.' });
   } catch (err) {
-    console.error('Reset password error:', err);
+    console.error('Reset password error:', err.message);
     res.status(500).json({ message: 'Server error during password reset.' });
   }
 });
 
 router.post('/phone/send-otp', protect, otpLimiter, async (req, res) => {
-  const { phone } = req.body;
-
-  if (!phone) {
-    return res.status(400).json({ message: 'Phone number is required.' });
-  }
-
+  const { phone } = req.body || {};
+  if (!phone) return res.status(400).json({ message: 'Phone number is required.' });
   try {
-    const user = store.users.find(u => u._id === req.user._id);
+    const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-
-    const result = await sendPhoneVerificationOtp(user, phone);
-    res.json(result);
+    res.json(await sendPhoneVerificationOtp(user, phone));
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
 
-router.post('/phone/verify-otp', protect, async (req, res) => {
-  const { otp } = req.body;
-
-  if (!otp) {
-    return res.status(400).json({ message: 'Verification OTP code is required.' });
-  }
-
+router.post('/phone/verify-otp', protect, verifyLimiter, async (req, res) => {
+  const { otp } = req.body || {};
+  if (!otp) return res.status(400).json({ message: 'Verification OTP code is required.' });
   try {
-    const user = store.users.find(u => u._id === req.user._id);
+    const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-
     const result = await verifyPhoneOtp(user, otp);
-    res.json({
-      ...result,
-      user: formatUserResponse(user),
-    });
+    res.json({ ...result, user: formatUserResponse(user) });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -647,84 +472,61 @@ router.post('/phone/verify-otp', protect, async (req, res) => {
 
 router.post('/phone/dismiss-prompt', protect, async (req, res) => {
   try {
-    const user = store.users.find(u => u._id === req.user._id);
-    if (user) {
-      user.phonePromptDismissed = true;
-      saveStore();
-    }
+    await User.updateOne({ _id: req.user._id }, { $set: { phonePromptDismissed: true } });
     res.json({ message: 'Mobile onboarding dismissed' });
-  } catch (err) {
+  } catch {
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-router.get('/preferences', protect, (req, res) => {
-  const user = store.users.find(u => u._id === req.user._id);
-  if (!user) return res.status(404).json({ message: 'User not found' });
-
-  res.json({
-    preferences: user.notificationPreferences || {
-      email: { security: true, subscriptions: true, trades: true, wallet: true, market: false },
-      sms: { security: true, subscriptions: false, trades: true, wallet: true, market: false },
-    },
-    isEmailVerified: !!user.isEmailVerified,
-    isPhoneVerified: !!user.isPhoneVerified,
-    phone: user.phone || '',
-  });
-});
-
-router.put('/preferences', protect, (req, res) => {
-  const { preferences } = req.body;
-
-  const user = store.users.find(u => u._id === req.user._id);
-  if (!user) return res.status(404).json({ message: 'User not found' });
-
-  if (preferences) {
-    user.notificationPreferences = {
-      email: {
-        security: preferences.email?.security ?? true,
-        subscriptions: preferences.email?.subscriptions ?? true,
-        trades: preferences.email?.trades ?? true,
-        wallet: preferences.email?.wallet ?? true,
-        market: preferences.email?.market ?? false,
-      },
-      sms: {
-        security: preferences.sms?.security ?? true,
-        subscriptions: preferences.sms?.subscriptions ?? false,
-        trades: preferences.sms?.trades ?? true,
-        wallet: preferences.sms?.wallet ?? true,
-        market: preferences.sms?.market ?? false,
-      },
-    };
-    saveStore();
-  }
-
-  res.json({
-    message: 'Notification preferences updated successfully',
-    preferences: user.notificationPreferences,
-  });
-});
-
-router.get('/notifications/history', protect, (req, res) => {
+router.get('/preferences', protect, async (req, res) => {
   try {
-    const logs = (store.notificationLogs || [])
-      .filter(l => l.userId === req.user._id)
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, 50);
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({
+      preferences: user.notificationPreferences,
+      isEmailVerified: !!user.isEmailVerified,
+      isPhoneVerified: !!user.isPhoneVerified,
+      phone: user.phone || '',
+    });
+  } catch {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
+router.put('/preferences', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const prefs = req.body?.preferences;
+    if (prefs && typeof prefs === 'object') {
+      for (const channel of ['email', 'sms']) {
+        for (const key of ['security', 'subscriptions', 'trades', 'wallet', 'market']) {
+          const v = prefs[channel]?.[key];
+          if (typeof v === 'boolean') user.notificationPreferences[channel][key] = v;
+        }
+      }
+      user.markModified('notificationPreferences');
+      await user.save();
+    }
+    res.json({ message: 'Notification preferences updated successfully', preferences: user.notificationPreferences });
+  } catch {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/notifications/history', protect, async (req, res) => {
+  try {
+    const logs = await NotificationLog.find({ userId: req.user._id }).sort({ createdAt: -1 }).limit(50).lean();
     res.json(logs);
-  } catch (err) {
+  } catch {
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.post('/logout', (req, res) => {
-  const isSecure = isSecureRequest(req);
-  res.clearCookie('token', {
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: isSecure ? 'none' : 'lax',
-  });
+  const secure = isSecureRequest(req);
+  res.clearCookie('token', { httpOnly: true, secure, sameSite: secure ? 'none' : 'lax' });
   res.json({ message: 'Logged out successfully' });
 });
 

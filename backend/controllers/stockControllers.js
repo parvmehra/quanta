@@ -634,8 +634,7 @@ export const getStockAdvisorResponse = async (req, res) => {
     } catch (err) {
         console.error(`AI Advisor error for ${symbol}:`, err.message);
         res.status(500).json({ 
-            message: 'Failed to generate advisory response', 
-            error: err.message 
+            message: 'Failed to generate advisory response'
         });
     }
 };

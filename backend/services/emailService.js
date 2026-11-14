@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
-import { store, saveStore } from '../dataStore.js';
 import crypto from 'crypto';
+import NotificationLog from '../models/NotificationLog.js';
 
 let transporter = null;
 let isSimulated = false;
@@ -43,7 +43,7 @@ const initTransporter = async () => {
   }
 
   isSimulated = true;
-  console.log('📧 Nodemailer: Running in Simulated Mode (logs to console/dataStore, codes returned to UI)');
+  console.log('📧 Nodemailer: Running in Simulated Mode (logs to the database, codes returned in development)');
 };
 
 initTransporter();
@@ -111,7 +111,6 @@ const emailFooter = `
 
 const logNotification = (userId, channel, eventType, recipient, title, message, status, referenceId = null) => {
   try {
-    if (!store.notificationLogs) store.notificationLogs = [];
     const log = {
       _id: crypto.randomUUID(),
       userId,
@@ -124,8 +123,7 @@ const logNotification = (userId, channel, eventType, recipient, title, message, 
       referenceId: referenceId || crypto.randomUUID(),
       createdAt: Date.now(),
     };
-    store.notificationLogs.push(log);
-    saveStore();
+    NotificationLog.create(log).catch((err) => console.error('Failed to save notification log:', err.message));
   } catch (err) {
     console.error('Failed to save notification log:', err);
   }

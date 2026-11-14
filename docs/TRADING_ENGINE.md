@@ -45,7 +45,7 @@ Statuses: OPEN, FILLED, CANCELLED, REJECTED. Rejected orders are kept for audit.
 | `orders` | `userId`, `clientOrderId` (unique with user), symbol, side, type, quantity, limit/stop price, status, fill price, value, fee, realised P&L |
 | `ledgerentries` | `userId`, `kind` (INITIAL, DEPOSIT, BUY, SELL, IMPORT), `currency`, `amount`, `balanceAfter`, order reference |
 
-Users, notification logs, chat messages and alert subscriptions are still stored in the local JSON file; they are the next migration step.
+Accounts (`users`), `notificationlogs`, `chatmessages` and alert `subscriptions` are also in MongoDB (`backend/models/`). User ids are UUID strings and are the keys used by every financial collection.
 
 ## API (all require login)
 

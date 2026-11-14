@@ -2,7 +2,7 @@ import express from 'express';
 import LedgerEntry from '../models/LedgerEntry.js';
 import { protect } from '../middlewares/auth.js';
 import { requireDb } from '../middlewares/requireDb.js';
-import { store } from '../dataStore.js';
+import User from '../models/User.js';
 import { notifyUser } from '../services/notificationService.js';
 import { TradeError, getBalances, deposit, serializeEntry, DEPOSIT_MAX, DEPOSIT_DAILY_CAP } from '../services/tradeService.js';
 
@@ -38,7 +38,7 @@ router.post('/topup', async (req, res) => {
       wallet: { balances, balance: balances.USD, currency: 'USD' },
       transaction: serializeEntry(entry),
     });
-    const user = store.users.find((u) => u._id === req.user._id);
+    const user = await User.findById(req.user._id);
     if (user) {
       notifyUser(user, 'WALLET_TOPUP', {
         amount: entry.amount / 100, newBalance: entry.balanceAfter / 100, method: 'Simulated deposit', referenceId: String(entry._id),

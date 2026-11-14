@@ -213,3 +213,15 @@ Known limitations:
 Decisions implemented from the plan: D8 (limit and stop orders rest; no leverage; flat 0.03% fee), D7 (separate USD and INR wallets, no conversion), D10 (canonical API names; the misspelled `protfolio` routes are removed).
 
 Not yet done (next): users, notification logs, chat and alert subscriptions still live in the JSON file, so the app is not deployable until they move to MongoDB; socket authentication; the landing-page showcase still contains simulated chart data; the portfolio-over-time chart (now possible from the ledger plus historical prices).
+
+**Phase 4B — done (2026-11-14).** Everything that was in the local JSON file now lives in MongoDB: users, notification logs, chat messages and alert subscriptions. The JSON store (`dataStore.js`) is deleted. The previous accounts were not imported, so everyone signs up fresh. The app now needs `MONGO_DB_URI` to run; without it, account and trading routes answer `503 DB_UNAVAILABLE` while market data pages keep working.
+
+Security fixes delivered with it (audit S5–S9):
+- Sockets: the JWT is read from the handshake; unauthenticated sockets can only follow public price rooms. `join_admin` needs the admin role, users can only join and write to their own chat room, and sender id and name come from the token, never from the client.
+- Chat history: a user can only read their own room; admins can read all.
+- Google sign-in: requires a verified Firebase ID token with a verified email. The old fallback that trusted an email address in the request body is removed.
+- Codes: generated with a secure random source, stored hashed, compared in constant time; login, password-reset and phone codes are invalidated after five wrong attempts; `verify-email`, `reset-password` and phone verification have rate limits; resend and forgot-password answer identically for unknown accounts. Phone one-time codes are no longer returned in API responses in production.
+- `/api/stocks/advisor` needs a login (and is rate limited); `/api/stocks/cache/clear` is admin only; request bodies are limited to 100 KB; error responses no longer echo internal messages.
+- Tests: `backend/tests/api.test.js` starts the real server and checks 16 attack scenarios (forged, expired and unsigned tokens, tokens for deleted users, injection in credentials, brute-forced codes, rate limits, socket spoofing, cross-user access). All pass together with the 20 engine tests.
+
+Remaining before a first deployment: choose the hosting setup (the server needs a long-running process for Socket.IO), set production environment variables, tighten MongoDB network access, and add a CI workflow.

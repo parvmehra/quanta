@@ -27,6 +27,7 @@ const ChatWidget = () => {
           const userData = res.data.user;
           setUser(userData);
           
+          try { socket.auth = { token: localStorage.getItem('token') || '' }; } catch { socket.auth = {}; }
           socket.connect();
           
           if (userData.role === 'admin') {

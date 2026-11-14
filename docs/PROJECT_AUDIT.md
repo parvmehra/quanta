@@ -198,7 +198,7 @@ Observed at runtime (confirms the static audit):
 
 ---
 
-## 15. Status of the critical findings (2026-11-14)
+## 15. Status of the findings (2026-11-14)
 
 | ID | Status |
 |---|---|
@@ -206,5 +206,12 @@ Observed at runtime (confirms the static audit):
 | S2 user data tracked in Git | Fixed: untracked, ignored, history reset |
 | S3 unlimited free wallet credit | Fixed: capped, simulated, ledger-recorded deposits only |
 | S4 JWT secret fallback | Fixed: server refuses to start without a strong secret |
-| S7 verification codes in responses | Fixed for production; still returned in development |
-| S5 socket / chat access, S6 Google sign-in fallback, S8 unauthenticated advisor and cache-clear, S9 JSON store | Open |
+| S5 socket and chat access | Fixed: token-based socket identity, role and room checks |
+| S6 Google sign-in trusting the request body | Fixed: verified ID token only |
+| S7 codes in responses, weak codes, missing limits | Fixed: secure random codes, hashed, attempt caps, rate limits; codes are only echoed outside production |
+| S8 unauthenticated advisor and cache-clear | Fixed: login required, admin only |
+| S9 JSON file as the database | Fixed: all data in MongoDB |
+| S10 local credential files | Original keys removed from the working tree; rotate anything that was ever shared |
+| S11 token kept in browser storage | Open (known trade-off of the current design) |
+| S12 portfolio and CSV input validation | Fixed on the server |
+| S13 helmet, body limit, error leakage | Fixed |

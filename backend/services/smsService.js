@@ -1,7 +1,9 @@
 import 'dotenv/config';
 import twilio from 'twilio';
 import crypto from 'crypto';
-import { store, saveStore } from '../dataStore.js';
+import NotificationLog from '../models/NotificationLog.js';
+import { IS_PRODUCTION } from '../config/env.js';
+import { sixDigitCode, hashCode, safeEqualHex } from '../utils/codes.js';
 
 let twilioClient = null;
 let hasTwilioCredentials = false;
@@ -21,7 +23,7 @@ export const initTwilio = () => {
     }
   } else {
     hasTwilioCredentials = false;
-    console.log('📱 Twilio SMS: Running in Simulated Mode (logs to console/dataStore)');
+    console.log('📱 Twilio SMS: Running in Simulated Mode (logs to the database)');
   }
 };
 
@@ -36,7 +38,6 @@ export const isValidE164 = (phone) => {
 
 const logSms = (userId, eventType, recipient, message, status, referenceId = null) => {
   try {
-    if (!store.notificationLogs) store.notificationLogs = [];
     const log = {
       _id: crypto.randomUUID(),
       userId,
@@ -49,8 +50,7 @@ const logSms = (userId, eventType, recipient, message, status, referenceId = nul
       referenceId: referenceId || crypto.randomUUID(),
       createdAt: Date.now(),
     };
-    store.notificationLogs.push(log);
-    saveStore();
+    NotificationLog.create(log).catch((err) => console.error('Failed to log SMS notification:', err.message));
   } catch (err) {
     console.error('Failed to log SMS notification:', err);
   }
@@ -108,15 +108,15 @@ export const sendPhoneVerificationOtp = async (user, phoneNumber) => {
     throw new Error(`Please wait ${waitSeconds} seconds before requesting a new OTP code`);
   }
 
-  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-  const hashedOtp = crypto.createHash('sha256').update(otpCode).digest('hex');
+  const otpCode = sixDigitCode();
+  const hashedOtp = hashCode(otpCode);
 
   user.phone = phoneNumber;
   user.phoneVerificationOtp = hashedOtp;
   user.phoneOtpExpires = now + EXPIRY_MS;
   user.phoneOtpAttempts = 0;
   user.phoneOtpLastSent = now;
-  saveStore();
+  await user.save();
 
   const smsText = `Your Quanta mobile verification code is: ${otpCode}. Valid for 10 minutes. Do not share this code.`;
   const result = await sendSms({
@@ -134,10 +134,10 @@ export const sendPhoneVerificationOtp = async (user, phoneNumber) => {
   return {
     success: true,
     simulated: !!result.simulated,
-    debugOtp: isFallbackNeeded ? otpCode : undefined,
+    debugOtp: isFallbackNeeded && !IS_PRODUCTION ? otpCode : undefined,
     message: result.success
       ? `Verification code sent to ${phoneNumber}`
-      : `Twilio delivery failed (${result.error}). Dev OTP provided: ${otpCode}`,
+      : IS_PRODUCTION ? 'The SMS could not be delivered. Please try again later.' : `Twilio delivery failed (${result.error}). Dev OTP provided: ${otpCode}`,
   };
 };
 
@@ -150,22 +150,20 @@ export const verifyPhoneOtp = async (user, inputOtp) => {
   if (now > user.phoneOtpExpires) {
     user.phoneVerificationOtp = null;
     user.phoneOtpExpires = null;
-    saveStore();
+    await user.save();
     throw new Error('OTP code has expired. Please request a new verification code.');
   }
 
   if ((user.phoneOtpAttempts || 0) >= 4) {
     user.phoneVerificationOtp = null;
     user.phoneOtpExpires = null;
-    saveStore();
+    await user.save();
     throw new Error('Too many failed attempts. Please request a new verification code.');
   }
 
-  const hashedInput = crypto.createHash('sha256').update(String(inputOtp).trim()).digest('hex');
-
-  if (hashedInput !== user.phoneVerificationOtp) {
+  if (!safeEqualHex(hashCode(inputOtp), user.phoneVerificationOtp)) {
     user.phoneOtpAttempts = (user.phoneOtpAttempts || 0) + 1;
-    saveStore();
+    await user.save();
     throw new Error('Invalid OTP code. Please check and try again.');
   }
 
@@ -173,7 +171,7 @@ export const verifyPhoneOtp = async (user, inputOtp) => {
   user.phoneVerificationOtp = null;
   user.phoneOtpExpires = null;
   user.phoneOtpAttempts = 0;
-  saveStore();
+  await user.save();
 
   await sendSms({
     to: user.phone,

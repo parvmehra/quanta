@@ -1,101 +1,91 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { searchStocks, getStockQuote, getStockNews, getStockHistory, clearCache, getMarketPulse, getBatchQuotes, getStockAdvisorResponse } from '../controllers/stockControllers.js';
 import { getChart, getFundamentals } from '../controllers/stockDataController.js';
-import rateLimit from 'express-rate-limit';
-import { protect } from '../middlewares/auth.js';
-import { store, saveStore } from '../dataStore.js';
+import { protect, requireAdmin } from '../middlewares/auth.js';
+import Subscription from '../models/Subscription.js';
+import User from '../models/User.js';
 import { notifyUser } from '../services/notificationService.js';
-import crypto from 'crypto';
+import { VALID_SYMBOL } from '../services/yahoo.js';
 
 const router = express.Router();
+
+const limit = (max, message) => rateLimit({ windowMs: 60 * 1000, max, standardHeaders: true, legacyHeaders: false, message: { message } });
+const dataLimiter = limit(90, 'Too many requests. Please slow down.');
+const advisorLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  keyGenerator: (req) => req.user?._id || req.ip,
+  validate: { keyGeneratorIpFallback: false },
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many AI requests. Please wait a moment.' },
+});
 
 router.get('/search', searchStocks);
 router.get('/quotes', getBatchQuotes);
 router.get('/quote/:symbol', getStockQuote);
 router.get('/news/:symbol', getStockNews);
 router.get('/history/:symbol', getStockHistory);
-
-const dataLimiter = rateLimit({ windowMs: 60 * 1000, max: 90, standardHeaders: true, legacyHeaders: false, message: { message: 'Too many requests. Please slow down.' } });
 router.get('/chart/:symbol', dataLimiter, getChart);
 router.get('/fundamentals/:symbol', dataLimiter, getFundamentals);
 router.get('/market-pulse', getMarketPulse);
-router.post('/advisor', getStockAdvisorResponse);
-router.post('/cache/clear', clearCache);
 
-router.get('/subscriptions', protect, (req, res) => {
+router.post('/advisor', protect, advisorLimiter, getStockAdvisorResponse);
+router.post('/cache/clear', protect, requireAdmin, clearCache);
+
+const cleanSymbol = (raw) => {
+  const s = String(raw || '').trim().toUpperCase();
+  return VALID_SYMBOL.test(s) && !s.startsWith('^') ? s : null;
+};
+
+router.get('/subscriptions', protect, async (req, res) => {
   try {
-    if (!store.subscriptions) store.subscriptions = [];
-    const userSubs = store.subscriptions.filter(s => s.userId === req.user._id);
-    res.json(userSubs);
-  } catch (err) {
+    const subs = await Subscription.find({ userId: req.user._id }).sort({ createdAt: -1 }).lean();
+    res.json(subs);
+  } catch {
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.post('/subscriptions', protect, async (req, res) => {
-  const { symbol, companyName, price } = req.body;
-
-  if (!symbol) {
-    return res.status(400).json({ message: 'Stock symbol is required.' });
-  }
+  const symbol = cleanSymbol(req.body?.symbol);
+  if (!symbol) return res.status(400).json({ message: 'A valid stock symbol is required.' });
 
   try {
-    if (!store.subscriptions) store.subscriptions = [];
-    const symUpper = symbol.trim().toUpperCase();
+    const existing = await Subscription.findOne({ userId: req.user._id, symbol }).lean();
+    if (existing) return res.json({ message: `Already subscribed to ${symbol}`, subscription: existing });
 
-    let existing = store.subscriptions.find(s => s.userId === req.user._id && s.symbol === symUpper);
-    if (existing) {
-      return res.json({ message: `Already subscribed to ${symUpper}`, subscription: existing });
-    }
+    const count = await Subscription.countDocuments({ userId: req.user._id });
+    if (count >= 50) return res.status(400).json({ message: 'You can follow at most 50 stocks.' });
 
-    const newSub = {
-      _id: crypto.randomUUID(),
+    const companyName = String(req.body?.companyName || symbol).slice(0, 120);
+    const price = Number(req.body?.price);
+    const subscription = await Subscription.create({
       userId: req.user._id,
-      symbol: symUpper,
-      companyName: companyName || symUpper,
-      priceAtSubscription: Number(price) || 0,
-      createdAt: Date.now(),
-    };
-
-    store.subscriptions.push(newSub);
-    saveStore();
-
-    const fullUser = store.users.find(u => u._id === req.user._id);
-    if (fullUser) {
-      notifyUser(fullUser, 'STOCK_SUBSCRIPTION', {
-        symbol: symUpper,
-        companyName: companyName || symUpper,
-        price: Number(price) || 0,
-      });
-    }
-
-    res.status(201).json({
-      message: `Successfully subscribed to alerts for ${symUpper}`,
-      subscription: newSub,
+      symbol,
+      companyName,
+      priceAtSubscription: Number.isFinite(price) && price > 0 ? price : 0,
     });
+
+    const user = await User.findById(req.user._id);
+    if (user) notifyUser(user, 'STOCK_SUBSCRIPTION', { symbol, companyName, price: subscription.priceAtSubscription }).catch(() => {});
+
+    res.status(201).json({ message: `Successfully subscribed to alerts for ${symbol}`, subscription });
   } catch (err) {
-    console.error('Subscription error:', err);
+    if (err?.code === 11000) return res.json({ message: `Already subscribed to ${symbol}` });
+    console.error('Subscription error:', err.message);
     res.status(500).json({ message: 'Server error subscribing to stock.' });
   }
 });
 
-router.delete('/subscriptions/:symbol', protect, (req, res) => {
-  const symUpper = req.params.symbol.trim().toUpperCase();
-
+router.delete('/subscriptions/:symbol', protect, async (req, res) => {
+  const symbol = cleanSymbol(req.params.symbol);
+  if (!symbol) return res.status(400).json({ message: 'A valid stock symbol is required.' });
   try {
-    if (!store.subscriptions) store.subscriptions = [];
-    const initialLen = store.subscriptions.length;
-    store.subscriptions = store.subscriptions.filter(
-      s => !(s.userId === req.user._id && s.symbol === symUpper)
-    );
-
-    saveStore();
-
-    res.json({
-      message: `Unsubscribed from ${symUpper}`,
-      removed: store.subscriptions.length < initialLen,
-    });
-  } catch (err) {
+    const result = await Subscription.deleteOne({ userId: req.user._id, symbol });
+    res.json({ message: `Unsubscribed from ${symbol}`, removed: result.deletedCount > 0 });
+  } catch {
     res.status(500).json({ message: 'Server error' });
   }
 });

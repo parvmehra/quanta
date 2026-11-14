@@ -15,7 +15,6 @@ import {
   sendWalletTopupSMS,
   sendSms,
 } from './smsService.js';
-import { store } from '../dataStore.js';
 
 const processedEvents = new Map();
 

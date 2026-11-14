@@ -13,9 +13,11 @@ import walletRoutes from './routes/walletRoutes.js';
 import marketRoutes from './routes/marketRoutes.js';
 import connectDB, { isDbReady } from './config/connectDB.js';
 import { runMatcher } from './services/tradeService.js';
-import { store, saveStore } from './dataStore.js';
+import jwt from 'jsonwebtoken';
+import User from './models/User.js';
+import ChatMessage from './models/ChatMessage.js';
 import cookieParser from "cookie-parser";
-import crypto from 'crypto';
+import { JWT_SECRET } from './config/env.js';
 
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173,http://127.0.0.1:5173")
   .split(',')
@@ -60,7 +62,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 
 app.use('/api/stocks', stockRoutes);
@@ -127,36 +129,54 @@ function stopGlobalPolling() {
   }
 }
 
+io.use(async (socket, next) => {
+  socket.data.user = null;
+  const token = socket.handshake.auth?.token;
+  if (!token) return next();
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.id).select('name role').lean();
+    if (user) socket.data.user = { id: user._id, name: user.name, role: user.role };
+  } catch {
+    socket.data.user = null;
+  }
+  next();
+});
+
 io.on('connection', (socket) => {
-  console.log(`🔌 Client connected: ${socket.id}`);
+  const me = () => socket.data.user;
 
   socket.on('join_chat', (roomId) => {
-    socket.join(`chat_${roomId}`);
-    console.log(`💬 User joined chat room: ${roomId}`);
+    const user = me();
+    const room = String(roomId || '');
+    if (!user || !room) return;
+    if (user.role !== 'admin' && room !== user.id) return;
+    socket.join(`chat_${room}`);
   });
 
   socket.on('join_admin', () => {
-    socket.join('admin_room');
-    console.log(`👑 Admin joined admin room`);
+    if (me()?.role === 'admin') socket.join('admin_room');
   });
 
-  socket.on('send_message', (data) => {
-    const message = {
-      _id: crypto.randomUUID(),
-      roomId: data.roomId,
-      senderId: data.senderId,
-      senderName: data.senderName,
-      text: data.text,
-      timestamp: data.timestamp || Date.now()
-    };
-    
-    if (!store.messages) store.messages = [];
-    store.messages.push(message);
-    saveStore();
-
-    io.to(`chat_${data.roomId}`).emit('receive_message', message);
-    
-    io.to('admin_room').emit('receive_message', message);
+  socket.on('send_message', async (data) => {
+    const user = me();
+    const text = String(data?.text || '').trim().slice(0, 2000);
+    if (!user || !text) return;
+    const roomId = user.role === 'admin' ? String(data?.roomId || '') : user.id;
+    if (!roomId) return;
+    try {
+      const message = await ChatMessage.create({
+        roomId,
+        senderId: user.id,
+        senderName: user.role === 'admin' ? 'Admin' : user.name,
+        text,
+      });
+      const payload = message.toObject();
+      io.to(`chat_${roomId}`).emit('receive_message', payload);
+      io.to('admin_room').emit('receive_message', payload);
+    } catch (err) {
+      console.error('Chat message error:', err.message);
+    }
   });
 
   socket.on('subscribe', (symbol) => {

@@ -4,7 +4,7 @@ import Order from '../models/Order.js';
 import LedgerEntry from '../models/LedgerEntry.js';
 import { protect } from '../middlewares/auth.js';
 import { requireDb } from '../middlewares/requireDb.js';
-import { store } from '../dataStore.js';
+import User from '../models/User.js';
 import { notifyUser } from '../services/notificationService.js';
 import {
   TradeError, placeOrder, cancelOrder, getBalances, getPositions, importHoldings, serializeOrder, serializeEntry,
@@ -46,7 +46,7 @@ router.post('/orders', ...guard, orderLimiter, handle(async (req, res) => {
   res.status(duplicate ? 200 : 201).json({ order: serializeOrder(order), balances, duplicate: Boolean(duplicate) });
 
   if (!duplicate && order.status === 'FILLED') {
-    const user = store.users.find((u) => u._id === byUser(req));
+    const user = await User.findById(byUser(req));
     if (user) {
       notifyUser(user, 'STOCK_PURCHASE', {
         tradeDetails: {

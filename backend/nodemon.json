@@ -4,8 +4,10 @@
     "services/",
     "middlewares/",
     "config/",
-    "index.js",
-    "dataStore.js"
+    "models/",
+    "utils/",
+    "controllers/",
+    "index.js"
   ],
   "ignore": [
     "data.json",
@@ -15,4 +17,3 @@
   ],
   "ext": "js,mjs,cjs"
 }
-
