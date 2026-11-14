@@ -15,6 +15,7 @@ const LightweightCandlestickChart = ({
   showBollinger = false,
   showRSI = false,
   symbol = '',
+  intraday = false,
 }) => {
   const chartWrapperRef = useRef(null);
   const mainChartContainerRef = useRef(null);
@@ -166,7 +167,7 @@ const LightweightCandlestickChart = ({
       },
       timeScale: {
         borderColor: 'rgba(255, 255, 255, 0.06)',
-        timeVisible: false,
+        timeVisible: intraday,
         secondsVisible: false,
         rightOffset: 5,
         fixLeftEdge: true,

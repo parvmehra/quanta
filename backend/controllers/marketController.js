@@ -1,8 +1,4 @@
-import yahooFinancePkg from 'yahoo-finance2';
-
-const yahooFinance = typeof yahooFinancePkg === 'function'
-  ? new yahooFinancePkg({ suppressNotices: ['yahooSurvey'] })
-  : yahooFinancePkg;
+import { yahooFinance } from '../services/yahoo.js';
 
 const SOURCE = 'Yahoo Finance';
 const OVERVIEW_TTL_MS = 60 * 1000;

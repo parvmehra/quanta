@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import http from 'http';
 import { Server as SocketIO } from 'socket.io';
 import cors from 'cors';
-import axios from 'axios';
+import { yahooFinance, VALID_SYMBOL } from './services/yahoo.js';
 import stockRoutes from './routes/stockRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import protfolioRoutes from './routes/protfolioRoutes.js';
@@ -69,79 +69,59 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/market', marketRoutes);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'quanta', time: Date.now() }));
 
-const AV_BASE = 'https://www.alphavantage.co/query';
-const AV_KEY = process.env.ALPHA_VANTAGE_API_KEY || 'demo';
-const RATE_LIMIT_INTERVAL_MS = 2 * 60 * 60 * 1000;
+const POLL_INTERVAL_MS = 15 * 1000;
+const MAX_SYMBOLS_PER_POLL = 50;
+const MAX_SUBSCRIPTIONS_PER_SOCKET = 20;
 
 const symbolSubscribers = new Map();
+const lastSent = new Map();
 let globalPollingTimer = null;
-let currentPollingIndex = 0;
+let polling = false;
 
-async function fetchAndBroadcast(symbol) {
+async function pollOnce() {
+  if (polling) return;
+  const symbols = Array.from(symbolSubscribers.keys()).slice(0, MAX_SYMBOLS_PER_POLL);
+  if (symbols.length === 0) return;
+  polling = true;
   try {
-    const response = await axios.get(AV_BASE, {
-      params: { function: 'GLOBAL_QUOTE', symbol, apikey: AV_KEY },
-    });
-
-    const gq = response.data['Global Quote'];
-    if (!gq || !gq['01. symbol']) {
-       if (response.data.Information || response.data.Note) {
-           console.log(`⚠️ Alpha Vantage Rate Limit Hit when fetching ${symbol}`);
-       }
-       return;
+    const result = await yahooFinance.quote(symbols, {}, { validateResult: false });
+    for (const q of Array.isArray(result) ? result : [result]) {
+      if (!q || !q.symbol || !(q.regularMarketPrice > 0)) continue;
+      const fingerprint = q.regularMarketPrice + ':' + (q.regularMarketVolume || 0);
+      if (lastSent.get(q.symbol) === fingerprint) continue;
+      lastSent.set(q.symbol, fingerprint);
+      io.to(q.symbol).emit('priceUpdate', {
+        symbol: q.symbol,
+        name: q.shortName || q.longName || q.symbol,
+        price: q.regularMarketPrice,
+        change: q.regularMarketChange ?? 0,
+        changePercent: q.regularMarketChangePercent ?? 0,
+        high: q.regularMarketDayHigh ?? null,
+        low: q.regularMarketDayLow ?? null,
+        open: q.regularMarketOpen ?? null,
+        previousClose: q.regularMarketPreviousClose ?? null,
+        volume: q.regularMarketVolume ?? null,
+        marketState: q.marketState ?? null,
+        timestamp: Date.now(),
+      });
     }
-
-    const price = parseFloat(gq['05. price']) || 0;
-    const change = parseFloat(gq['09. change']) || 0;
-    const changePercent = parseFloat((gq['10. change percent'] || '0').replace('%', '')) || 0;
-
-    const payload = {
-      symbol: gq['01. symbol'],
-      name: gq['01. symbol'],
-      price,
-      change,
-      changePercent,
-      high: parseFloat(gq['03. high']) || 0,
-      low: parseFloat(gq['04. low']) || 0,
-      open: parseFloat(gq['02. open']) || 0,
-      previousClose: parseFloat(gq['08. previous close']) || 0,
-      volume: parseInt(gq['06. volume'], 10) || 0,
-      marketCap: null,
-      sharesOutstanding: null,
-      timestamp: Date.now(),
-    };
-
-    io.to(symbol).emit('priceUpdate', payload);
-    console.log(`📡 Broadcast ${symbol}: $${price}`);
   } catch (err) {
-    console.error(`WebSocket fetch error for ${symbol}:`, err.message);
+    console.warn('Live price poll failed:', err.message);
+  } finally {
+    polling = false;
   }
-}
-
-function processPollingQueue() {
-    const activeSymbols = Array.from(symbolSubscribers.keys());
-    if (activeSymbols.length === 0) return;
-
-    if (currentPollingIndex >= activeSymbols.length) {
-        currentPollingIndex = 0;
-    }
-
-    const symbolToFetch = activeSymbols[currentPollingIndex];
-    fetchAndBroadcast(symbolToFetch);
-    currentPollingIndex++;
 }
 
 function startGlobalPolling() {
   if (globalPollingTimer) return;
-  globalPollingTimer = setInterval(processPollingQueue, RATE_LIMIT_INTERVAL_MS);
-  console.log(`▶️  Started global rate-limited polling (1 req / 12.5s)`);
+  globalPollingTimer = setInterval(pollOnce, POLL_INTERVAL_MS);
 }
 
 function stopGlobalPolling() {
   if (globalPollingTimer) {
     clearInterval(globalPollingTimer);
     globalPollingTimer = null;
-    console.log(`⏹️  Stopped global polling`);
+    lastSent.clear();
   }
 }
 
@@ -178,24 +158,24 @@ io.on('connection', (socket) => {
   });
 
   socket.on('subscribe', (symbol) => {
-    if (!symbol) return;
-    const sym = symbol.toUpperCase();
+    const sym = String(symbol || '').trim().toUpperCase();
+    if (!VALID_SYMBOL.test(sym)) return;
+
+    const joined = Array.from(socket.rooms).filter((r) => symbolSubscribers.has(r)).length;
+    if (!socket.rooms.has(sym) && joined >= MAX_SUBSCRIPTIONS_PER_SOCKET) return;
 
     socket.join(sym);
-
     if (!symbolSubscribers.has(sym)) {
       symbolSubscribers.set(sym, new Set());
-      setTimeout(() => fetchAndBroadcast(sym), 1000); 
+      setTimeout(pollOnce, 500);
     }
     symbolSubscribers.get(sym).add(socket.id);
-
     startGlobalPolling();
-    console.log(`📥 ${socket.id} subscribed to ${sym} (${symbolSubscribers.get(sym).size} subscribers)`);
   });
 
   socket.on('unsubscribe', (symbol) => {
-    if (!symbol) return;
-    const sym = symbol.toUpperCase();
+    const sym = String(symbol || '').trim().toUpperCase();
+    if (!sym) return;
 
     socket.leave(sym);
 

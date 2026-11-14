@@ -186,3 +186,18 @@ Known limitations carried forward:
 - Wallet balance on the dashboard is the server value, which trades do not yet change (S1/S3); it will be correct after Phase 6A.
 - Watchlist is still browser-local until Phase 5.
 - Yahoo returned no quote for `TATAMOTORS.NS` (the company is now listed as `TMPV.NS` / `TMCV.NS`); lists were updated. Fixed symbol lists need occasional review.
+
+**Phase 3 — done (2026-11-14).** Delivered:
+- Stock page (`/stock/:symbol`) with Overview, Chart, Fundamentals and News tabs. Overview: header with price, change, streaming state and watchlist / alerts / trade actions; chart with 8 timeframes; key statistics with day and 52-week range bars; company profile; latest news; related stocks. Chart tab: line (with volume bars) or candlesticks with SMA 20, Bollinger and RSI 14. Fundamentals: 45 fields in six groups; missing values show "—", never zero.
+- Backend: `GET /api/stocks/chart/:symbol?range=` (1D, 1W, 1M, 3M, 6M, 1Y, 5Y, MAX; regular trading hours only; cached; 503 on failure), `GET /api/stocks/fundamentals/:symbol` (Yahoo `quoteSummary`, plus related symbols), shared Yahoo client in `services/yahoo.js`.
+- Live prices: the socket poller now batches subscribed symbols to Yahoo every 15 s (was one symbol every 2 h), validates symbols and caps subscriptions per socket. Update payload gained `marketState`.
+- Removed fabricated data: `GET /api/stocks/quote` and `/history` no longer return hard-coded or random prices when the provider fails; they return `503 DATA_UNAVAILABLE`. The news endpoint returns an empty list instead of a placeholder article, and news publish times are now converted correctly (they were off by a factor of 1000).
+- Top-bar search shows suggestions (keyboard navigable); Enter without a selection opens the Stock Explorer.
+- Alerts now use the server subscription endpoints (login required) instead of browser-only storage.
+- Tests: 18 unit tests (indicators incl. a textbook RSI value, portfolio maths, trading helpers); 35 browser checks for this page including mobile widths.
+
+Known limitations:
+- News comes from Yahoo's search results, which usually return about three to five articles.
+- Fundamentals for indices and some non-US symbols are sparse by nature of the data.
+- Percentages come as fractions from the provider and are multiplied by 100 for display; if the provider changes units this needs re-checking.
+- The Hero and Trading Terminal still contain simulated chart data of their own; they are addressed in Phase 4.

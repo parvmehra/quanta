@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
-  Search, Bell, Menu, PanelLeftClose, PanelLeftOpen, LogOut, UserRound,
+  Bell, Menu, PanelLeftClose, PanelLeftOpen, LogOut, UserRound,
   LayoutList, LayoutDashboard, Globe2, CandlestickChart, Briefcase, HelpCircle, Info, X,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +11,7 @@ import { API_BASE_URL } from '../config';
 import { getMarketStatus } from '../utils/marketHours';
 import { ChangeValue, Skeleton } from '../components/ui/ui';
 import QuantaMark from '../components/QuantaMark';
+import SymbolSearch from '../components/SymbolSearch';
 import './AppShell.css';
 
 const NAV = [
@@ -113,8 +114,6 @@ export default function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const searchRef = useRef(null);
   const notifRef = useRef(null);
   const menuRef = useRef(null);
 
@@ -123,29 +122,11 @@ export default function AppShell() {
 
   useEffect(() => { setDrawerOpen(false); setNotifOpen(false); setMenuOpen(false); }, [location.pathname]);
 
-  useEffect(() => {
-    const onKey = (e) => {
-      const tag = e.target?.tagName;
-      if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) && !e.target?.isContentEditable) {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, []);
-
   const toggleCollapsed = () => {
     setCollapsed((c) => {
       try { localStorage.setItem(COLLAPSE_KEY, c ? '0' : '1'); } catch { }
       return !c;
     });
-  };
-
-  const submitSearch = (e) => {
-    e.preventDefault();
-    const q = query.trim();
-    if (q) { navigate(`/analyzer?q=${encodeURIComponent(q)}`); setQuery(''); searchRef.current?.blur(); }
   };
 
   const handleLogout = async () => { await logout(); navigate('/'); };
@@ -194,18 +175,7 @@ export default function AppShell() {
             <Menu size={18} />
           </button>
 
-          <form className="shell-search" role="search" onSubmit={submitSearch}>
-            <Search size={15} aria-hidden="true" />
-            <input
-              ref={searchRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search symbol or company"
-              aria-label="Search stocks"
-            />
-            <kbd aria-hidden="true">/</kbd>
-          </form>
+          <SymbolSearch />
 
           <MarketStatus />
 

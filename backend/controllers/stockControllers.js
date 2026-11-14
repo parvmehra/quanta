@@ -105,42 +105,6 @@ const FALLBACK_STOCKS = [
     { symbol: 'DMART.NS',     description: 'Avenue Supermarts Limited',        type: 'Equity', exchange: 'NSE'    },
 ];
 
-const MOCK_QUOTES = {
-    'AAPL': { symbol: 'AAPL', name: 'Apple Inc.', price: 185.50, change: 2.50, changePercent: 1.37, high: 187.30, low: 183.10, open: 184.20, previousClose: 183.00, volume: 42150000, marketCap: 2900000000000, sharesOutstanding: 15631000000 },
-    'MSFT': { symbol: 'MSFT', name: 'Microsoft Corporation', price: 420.75, change: 5.25, changePercent: 1.26, high: 423.50, low: 417.80, open: 419.30, previousClose: 415.50, volume: 18920000, marketCap: 3140000000000, sharesOutstanding: 7470000000 },
-    'GOOGL': { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 180.45, change: 3.20, changePercent: 1.81, high: 182.80, low: 178.90, open: 179.10, previousClose: 177.25, volume: 22100000, marketCap: 1800000000000, sharesOutstanding: 9970000000 },
-    'TSLA': { symbol: 'TSLA', name: 'Tesla, Inc.', price: 243.80, change: -2.10, changePercent: -0.86, high: 247.50, low: 241.90, open: 245.20, previousClose: 245.90, volume: 125900000, marketCap: 770000000000, sharesOutstanding: 3160000000 },
-    'RELIANCE.NS': { symbol: 'RELIANCE.NS', name: 'Reliance Industries Limited', price: 2850.45, change: 45.60, changePercent: 1.62, high: 2870.30, low: 2820.15, open: 2840.50, previousClose: 2804.85, volume: 18550000, marketCap: 1900000000000, sharesOutstanding: 666400000 },
-    'TCS.NS': { symbol: 'TCS.NS', name: 'Tata Consultancy Services', price: 2470.20, change: 10.10, changePercent: 0.41, high: 2490.00, low: 2455.00, open: 2465.00, previousClose: 2460.10, volume: 2090000, marketCap: 8940000000000, sharesOutstanding: 3620000000 },
-    'TATASTEEL.NS': { symbol: 'TATASTEEL.NS', name: 'Tata Steel Limited', price: 168.04, change: -1.24, changePercent: -0.73, high: 171.20, low: 166.80, open: 170.00, previousClose: 169.28, volume: 5270000, marketCap: 2100000000000, sharesOutstanding: 12480000000 },
-    'TMCV.NS': { symbol: 'TMCV.NS', name: 'Tata Motors Limited', price: 396.10, change: -3.60, changePercent: -0.90, high: 402.00, low: 394.50, open: 401.00, previousClose: 399.70, volume: 1840000, marketCap: 1460000000000, sharesOutstanding: 3680000000 },
-    'TATACAP.NS': { symbol: 'TATACAP.NS', name: 'Tata Capital Limited', price: 321.40, change: 9.95, changePercent: 3.20, high: 326.50, low: 315.00, open: 316.00, previousClose: 311.45, volume: 11410000, marketCap: 1350000000000, sharesOutstanding: 4200000000 },
-    'INFY.NS': { symbol: 'INFY.NS', name: 'Infosys Limited', price: 1540.80, change: 12.50, changePercent: 0.82, high: 1560.30, low: 1525.10, open: 1538.60, previousClose: 1528.30, volume: 5640000, marketCap: 670000000000, sharesOutstanding: 435200000 },
-};
-
-const generateMockQuote = (symbol) => {
-    const basePrice = Math.random() * 400 + 50;
-    const changePercent = (Math.random() - 0.5) * 4;
-    const change = (basePrice * changePercent) / 100;
-    
-    return {
-        symbol: symbol.toUpperCase(),
-        name: symbol.toUpperCase(),
-        price: parseFloat(basePrice.toFixed(2)),
-        change: parseFloat(change.toFixed(2)),
-        changePercent: parseFloat(changePercent.toFixed(2)),
-        high: parseFloat((basePrice + Math.abs(change) * 1.5).toFixed(2)),
-        low: parseFloat((basePrice - Math.abs(change) * 1.5).toFixed(2)),
-        open: parseFloat((basePrice - change * 0.5).toFixed(2)),
-        previousClose: parseFloat((basePrice - change).toFixed(2)),
-        volume: Math.floor(Math.random() * 50000000) + 1000000,
-        marketCap: null,
-        sharesOutstanding: null,
-        isOfflineData: true,
-        message: '📡 Data provided in offline mode (Live APIs unavailable)'
-    };
-};
-
 const isFinnhubRateLimit = (err) => err?.response?.status === 429;
 
 export const searchStocks = async (req, res) => {
@@ -301,12 +265,15 @@ export const getStockQuote = async (req, res) => {
         
         console.error(`Quote error for ${symbol}:`, err.message);
         
-        console.warn(`⚠️ APIs unavailable, returning offline mock data for ${symbol}`);
-        const mockData = MOCK_QUOTES[symbol.toUpperCase()] || generateMockQuote(symbol);
-        cache.quote[symLower] = { data: mockData, timestamp: Date.now() };
-        
-        res.status(200).json(mockData);
+        return res.status(503).json({ code: 'DATA_UNAVAILABLE', message: 'Quote data is temporarily unavailable.' });
     }
+};
+
+const toMillis = (t) => {
+    if (t instanceof Date) return Number.isNaN(t.getTime()) ? null : t.getTime();
+    const n = Number(t);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return n < 1e12 ? n * 1000 : n;
 };
 
 export const getStockNews = async (req, res) => {
@@ -329,7 +296,7 @@ export const getStockNews = async (req, res) => {
                     summary: article.title,
                     url: article.link,
                     banner_image: article.thumbnail?.resolutions?.[0]?.url || null,
-                    datetime: article.providerPublishTime ? article.providerPublishTime * 1000 : Date.now(),
+                    datetime: toMillis(article.providerPublishTime),
                 }));
             }
         } catch (err) {
@@ -355,7 +322,7 @@ export const getStockNews = async (req, res) => {
                 summary: article.summary,
                 url: article.url,
                 banner_image: article.image || null,
-                datetime: article.datetime ? article.datetime * 1000 : Date.now(),
+                datetime: toMillis(article.datetime),
             }));
         }
 
@@ -369,20 +336,7 @@ export const getStockNews = async (req, res) => {
         
         console.error(`News error for ${symbol}:`, err.message);
         
-        const fallbackNews = [
-            {
-                headline: 'Market Update: Live data unavailable',
-                source: 'System',
-                summary: 'News services are currently unavailable. Please check back later.',
-                url: '#',
-                banner_image: null,
-                datetime: Date.now(),
-                isOfflineData: true
-            }
-        ];
-        
-        cache.news[symLower] = { data: fallbackNews, timestamp: Date.now() };
-        res.status(200).json(fallbackNews);
+        return res.status(200).json([]);
     }
 };
 
@@ -479,33 +433,7 @@ export const getStockHistory = async (req, res) => {
         
         console.error(`History error for ${symbol}:`, err.message);
         
-        let basePrice = MOCK_QUOTES[symbol.toUpperCase()]?.price;
-        if (!basePrice && cache.quote?.[symLower]?.data?.price) {
-            basePrice = cache.quote[symLower].data.price;
-        }
-        if (!basePrice) {
-            basePrice = (symbol.toUpperCase().endsWith('.NS') || symbol.toUpperCase().endsWith('.BO')) ? 2478 : 185;
-        }
-        
-        const mockHistory = [];
-        for (let i = 100; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            const variance = (Math.random() - 0.5) * (basePrice * 0.03);
-            const price = Math.max(1, basePrice + variance);
-            mockHistory.push({
-                date: date.toISOString().split('T')[0],
-                price: parseFloat(price.toFixed(2)),
-                open: parseFloat((price * 0.995).toFixed(2)),
-                high: parseFloat((price * 1.01).toFixed(2)),
-                low: parseFloat((price * 0.99).toFixed(2)),
-                volume: Math.floor(Math.random() * 50000000) + 1000000,
-                isOfflineData: true
-            });
-        }
-        
-        cache.history[symLower] = { data: mockHistory, timestamp: Date.now() - (CACHE_DURATION - 30000) };
-        res.status(200).json(mockHistory);
+        return res.status(503).json({ code: 'DATA_UNAVAILABLE', message: 'Price history is temporarily unavailable.' });
     }
 };
 

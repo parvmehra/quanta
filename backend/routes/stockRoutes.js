@@ -1,5 +1,7 @@
 import express from 'express';
 import { searchStocks, getStockQuote, getStockNews, getStockHistory, clearCache, getMarketPulse, getBatchQuotes, getStockAdvisorResponse } from '../controllers/stockControllers.js';
+import { getChart, getFundamentals } from '../controllers/stockDataController.js';
+import rateLimit from 'express-rate-limit';
 import { protect } from '../middlewares/auth.js';
 import { store, saveStore } from '../dataStore.js';
 import { notifyUser } from '../services/notificationService.js';
@@ -12,6 +14,10 @@ router.get('/quotes', getBatchQuotes);
 router.get('/quote/:symbol', getStockQuote);
 router.get('/news/:symbol', getStockNews);
 router.get('/history/:symbol', getStockHistory);
+
+const dataLimiter = rateLimit({ windowMs: 60 * 1000, max: 90, standardHeaders: true, legacyHeaders: false, message: { message: 'Too many requests. Please slow down.' } });
+router.get('/chart/:symbol', dataLimiter, getChart);
+router.get('/fundamentals/:symbol', dataLimiter, getFundamentals);
 router.get('/market-pulse', getMarketPulse);
 router.post('/advisor', getStockAdvisorResponse);
 router.post('/cache/clear', clearCache);
