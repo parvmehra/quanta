@@ -6,7 +6,7 @@ export const useTheme = () => useContext(ThemeContext);
 
 export const ThemeProvider = ({ children }) => {
   useEffect(() => {
-    // MarketLens is designed as an exclusive dark fintech terminal
+    // Quanta is designed as an exclusive dark fintech terminal
     document.documentElement.removeAttribute('data-theme');
     localStorage.removeItem('stockpulse-theme');
   }, []);

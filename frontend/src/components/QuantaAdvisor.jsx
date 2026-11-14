@@ -6,13 +6,13 @@ import {
   ArrowUpRight, ArrowDownRight, RefreshCw, Star, Check
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
-import { formatCurrencyValue, getCurrencyCode } from '../utils/currency';
-import './MarketLensAdvisor.css';
+import { getCurrencyCode } from '../utils/currency';
+import './QuantaAdvisor.css';
 
 /**
  * Lightweight Markdown Parser for financial responses
  */
-const FormattedAdvisorText = ({ content, onSwitchStock }) => {
+const FormattedAdvisorText = ({ content }) => {
   // Strip out actions comment block
   const cleanedText = (content || '').replace(/<!--ACTIONS:[\s\S]*?-->/g, '').trim();
 
@@ -77,7 +77,7 @@ const FormattedAdvisorText = ({ content, onSwitchStock }) => {
     // Format italics
     formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
     // Format ticker links [Switch to TICKER](#)
-    formatted = formatted.replace(/\[Switch to ([A-Z0-9\.\-]+)\]\([^\)]*\)/g, '<span class="mla-inline-ticker">$1</span>');
+    formatted = formatted.replace(/\[Switch to ([A-Z0-9.-]+)\]\([^)]*\)/g, '<span class="mla-inline-ticker">$1</span>');
     return formatted;
   };
 
@@ -114,7 +114,7 @@ const FormattedAdvisorText = ({ content, onSwitchStock }) => {
   return <div className="mla-markdown">{elements}</div>;
 };
 
-const MarketLensAdvisor = ({
+const QuantaAdvisor = ({
   symbol = 'AAPL',
   stockData = null,
   indicators = {},
@@ -161,7 +161,7 @@ const MarketLensAdvisor = ({
         {
           id: 'welcome',
           role: 'assistant',
-          content: `👋 **Welcome to MarketLens AI!**\n\nI am your dedicated stock research copilot for **${stockData?.name || symbol}** (${symbol.toUpperCase()}).\n\nI track live prices, RSI (${indicators.rsi || '50.0'}), moving averages, and order flows in real-time. Ask me anything or select a research question below!`,
+          content: `👋 **Welcome to Quanta AI!**\n\nI am your dedicated stock research copilot for **${stockData?.name || symbol}** (${symbol.toUpperCase()}).\n\nI track live prices, RSI (${indicators.rsi || '50.0'}), moving averages, and order flows in real-time. Ask me anything or select a research question below!`,
           symbol: symbol.toUpperCase(),
           timestamp: Date.now(),
           actions: [
@@ -344,7 +344,7 @@ const MarketLensAdvisor = ({
   };
 
   return (
-    <div className="mla-panel animate-fade-in" role="complementary" aria-label="MarketLens AI Advisor">
+    <div className="mla-panel animate-fade-in" role="complementary" aria-label="Quanta AI Advisor">
       
       {/* ── 1. HEADER ── */}
       <div className="mla-header">
@@ -354,7 +354,7 @@ const MarketLensAdvisor = ({
           </div>
           <div className="mla-header-titles">
             <div className="mla-title-row">
-              <span className="mla-title">MarketLens AI</span>
+              <span className="mla-title">Quanta AI</span>
               <span className="mla-badge">Gemini</span>
             </div>
             <span className="mla-subtitle">Your stock research assistant</span>
@@ -485,7 +485,7 @@ const MarketLensAdvisor = ({
         {isLoading && (
           <div className="mla-loading-indicator">
             <div className="mla-loading-spinner"></div>
-            <span>MarketLens AI is analyzing {symbol.toUpperCase()}...</span>
+            <span>Quanta AI is analyzing {symbol.toUpperCase()}...</span>
           </div>
         )}
 
@@ -523,7 +523,7 @@ const MarketLensAdvisor = ({
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={`Ask MarketLens AI about ${symbol.toUpperCase()}...`}
+          placeholder={`Ask Quanta AI about ${symbol.toUpperCase()}...`}
           disabled={isLoading}
         />
         <button
@@ -541,5 +541,5 @@ const MarketLensAdvisor = ({
   );
 };
 
-export default MarketLensAdvisor;
+export default QuantaAdvisor;
 

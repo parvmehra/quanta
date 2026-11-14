@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import MarketLensAdvisor from '../components/MarketLensAdvisor';
+import QuantaAdvisor from '../components/QuantaAdvisor';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { API_BASE_URL, SOCKET_URL } from '../config';
@@ -566,7 +566,7 @@ const TradingTerminal = () => {
 
       if (isBuy) {
         // --- Place Buy Order ---
-        const response = await axios.post(`${API_BASE_URL}/api/protfolio`, {
+        await axios.post(`${API_BASE_URL}/api/protfolio`, {
           symbol: symbol.toUpperCase(),
           shares: payloadQty,
           avgPrice: payloadPrice,
@@ -812,10 +812,10 @@ const TradingTerminal = () => {
               type="button" 
               className={`mla-trigger-btn ${isAiOpen ? 'active' : ''}`}
               onClick={() => setIsAiOpen(!isAiOpen)}
-              title="Toggle MarketLens AI Assistant"
+              title="Toggle Quanta AI Assistant"
             >
               <Sparkles size={14} />
-              <span>MarketLens AI</span>
+              <span>Quanta AI</span>
             </button>
           </div>
         </div>
@@ -1317,7 +1317,7 @@ const TradingTerminal = () => {
                       transition: 'all 0.15s ease'
                     }}
                   >
-                    <Sparkles size={12} /> Consult MarketLens AI
+                    <Sparkles size={12} /> Consult Quanta AI
                   </button>
                 </div>
               </div>
@@ -1356,11 +1356,11 @@ const TradingTerminal = () => {
           </div>
 
           {/* ==========================================
-             RIGHT SECTION: INTEGRATED MARKETLENS AI
+             RIGHT SECTION: INTEGRATED QUANTA AI
              ========================================== */}
           {isAiOpen && (
             <div className="tt-workspace-ai-side">
-              <MarketLensAdvisor
+              <QuantaAdvisor
                 symbol={symbol}
                 stockData={stockData}
                 indicators={{

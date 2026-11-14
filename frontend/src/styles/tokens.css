@@ -1,0 +1,111 @@
+/* ==========================================================================
+   Quanta design tokens
+   Single source of truth for colour, type, spacing and shape.
+   Components must use these variables instead of raw hex values.
+
+   Legacy names (--bg-body, --text-1, --accent ...) are kept as aliases so
+   pages that have not been redesigned yet pick up the new palette.
+   ========================================================================== */
+
+:root {
+  /* ---- Surfaces ---- */
+  --q-bg:            #0B1017;  /* app background            */
+  --q-sidebar:       #0E141D;  /* sidebar / top bar         */
+  --q-surface:       #131B26;  /* primary panels            */
+  --q-surface-2:     #192331;  /* inputs, raised rows       */
+  --q-surface-3:     #1F2B3B;  /* hover                     */
+
+  /* ---- Lines ---- */
+  --q-border:        #263343;
+  --q-border-strong: #33445A;
+
+  /* ---- Text ---- */
+  --q-text:          #E7EDF5;
+  --q-text-2:        #94A3B8;
+  --q-text-3:        #64748B;  /* muted: use for non-essential text only */
+
+  /* ---- Semantic colour ---- */
+  --q-positive:      #22C55E;
+  --q-positive-bg:   rgba(34, 197, 94, 0.12);
+  --q-negative:      #EF4444;
+  --q-negative-bg:   rgba(239, 68, 68, 0.12);
+  --q-info:          #60A5FA;  /* neutral / interactive accent */
+  --q-info-hover:    #3B82F6;
+  --q-info-bg:       rgba(96, 165, 250, 0.14);
+  --q-warning:       #F59E0B;
+  --q-warning-bg:    rgba(245, 158, 11, 0.14);
+
+  /* ---- Type ---- */
+  --q-font:   'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fs-xs:    0.75rem;
+  --fs-sm:    0.8125rem;
+  --fs-base:  0.875rem;
+  --fs-md:    1rem;
+  --fs-lg:    1.125rem;
+  --fs-xl:    1.375rem;
+  --fs-2xl:   1.75rem;
+
+  /* ---- Spacing (4px grid) ---- */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+
+  /* ---- Shape ---- */
+  --q-radius-sm: 3px;
+  --q-radius:    4px;
+  --q-radius-lg: 6px;
+
+  /* ---- Layout ---- */
+  --sidebar-w:           232px;
+  --sidebar-w-collapsed: 60px;
+  --topbar-h:            52px;
+  --ticker-h:            30px;
+
+  /* ---- Motion ---- */
+  --q-transition: 120ms ease;
+
+  /* ======================================================================
+     Legacy aliases (used by existing page CSS)
+     ====================================================================== */
+  --bg-body:      var(--q-bg);
+  --bg-card:      var(--q-surface);
+  --bg-elevated:  var(--q-surface-2);
+  --bg-input:     var(--q-surface-2);
+  --bg-hover:     var(--q-surface-3);
+
+  --border:        var(--q-border);
+  --border-hover:  var(--q-border-strong);
+  --border-strong: #44587A;
+
+  --text-1: var(--q-text);
+  --text-2: var(--q-text-2);
+  --text-3: var(--q-text-3);
+
+  --accent:       var(--q-info);
+  --accent-hover: var(--q-info-hover);
+  --accent-dim:   var(--q-info-bg);
+  --accent-glow:  rgba(96, 165, 250, 0.25);
+  --accent2:      var(--q-info);
+  --accent2-dim:  var(--q-info-bg);
+
+  --green:     var(--q-positive);
+  --green-dim: var(--q-positive-bg);
+  --red:       var(--q-negative);
+  --red-dim:   var(--q-negative-bg);
+  --yellow:    var(--q-warning);
+
+  --font-heading: var(--q-font);
+  --font-body:    var(--q-font);
+  --font-mono:    var(--q-font);
+
+  --radius-sm: var(--q-radius-sm);
+  --radius:    var(--q-radius);
+  --radius-md: var(--q-radius-lg);
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+
+  --transition: var(--q-transition);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+}

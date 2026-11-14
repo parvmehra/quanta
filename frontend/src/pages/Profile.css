@@ -1,10 +1,10 @@
 /* ==========================================================================
-   Profile.css — MarketLens User Profile & Notification Preferences Centre
+   Profile.css — Quanta User Profile & Notification Preferences Centre
    ========================================================================== */
 
 .profile-page {
-  padding-top: 70px;
-  min-height: calc(100vh - 70px);
+  padding-top: 0;
+  min-height: auto;
   background: var(--bg-body, #0a0e0c);
   color: #e2e8f0;
 }
@@ -20,6 +20,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
   padding: 24px 28px;
   background: #101614;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -91,7 +93,7 @@
 
 @media (max-width: 900px) {
   .profile-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

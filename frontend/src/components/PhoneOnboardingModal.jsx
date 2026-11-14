@@ -107,7 +107,7 @@ const PhoneOnboardingModal = () => {
           <div className="phone-modal-icon-wrap">
             <Smartphone size={24} className="phone-modal-icon" />
           </div>
-          <h3>Complete your MarketLens profile</h3>
+          <h3>Complete your Quanta profile</h3>
           <p>
             Add and verify your mobile number to receive important account alerts, stock subscription updates, and transaction notifications by SMS.
           </p>

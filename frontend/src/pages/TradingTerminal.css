@@ -3,9 +3,9 @@
    ========================================================================== */
 
 .tt-page {
-  min-height: 100vh;
+  min-height: auto;
   width: 100%;
-  padding: 85px 24px 40px;
+  padding: 20px 24px 40px;
   position: relative;
   overflow-x: hidden;
   background-color: var(--bg-body);

@@ -194,3 +194,17 @@ Email/password + OTP + Google login, phone verification, notification preference
 ## 13. Open questions for the owner
 
 See §"Decisions requested" in `IMPLEMENTATION_PLAN.md`.
+
+---
+
+## 14. Runtime smoke test (Phase 1, 2026-11-14)
+
+Method: both dev servers started locally; Edge driven headlessly with a throw-away user created through the real signup/verify API (removed afterwards). Each route was loaded at 1440×900 and 390×844; console errors, failed/5xx requests and horizontal overflow recorded.
+
+Result after the Phase 1 changes: **22/22 route×viewport loads with 0 console errors, 0 failed requests, 0 horizontal overflow.** Protected routes render when a valid token is present.
+
+Observed at runtime (confirms the static audit):
+- `GET /api/stocks/quote|history|market-pulse` return real Yahoo Finance data; `GET /api/protfolio` without a token → 401; server refuses to start without a strong `JWT_SECRET`.
+- `market-pulse` reports `price: 0` when a provider call fails (the new index strip treats this as "unavailable", not as a price).
+- Existing pages (Hero, StockAnalyzer, StockDetails, TradingTerminal, Portfolio) still use hard-coded emerald/dark-green colours and their own card styles; they are restyled in Phases 2–5.
+- Not verified at runtime: email/SMS delivery (simulated mode), Gemini, Google sign-in, socket price ticks (poller interval defect S-list), CSV import end-to-end, trade execution (to be replaced in Phase 6A).

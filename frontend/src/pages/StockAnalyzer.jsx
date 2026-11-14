@@ -3,7 +3,6 @@ import { Search, Loader, Activity, Star, Globe2, Sparkles, ArrowRight, ArrowUpRi
 import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-import { useNotification } from '../contexts/NotificationContext';
 import { API_BASE_URL, SOCKET_URL } from '../config';
 import { formatCompactCurrency, formatCurrencyValue } from '../utils/currency';
 import './StockAnalyzer.css';
@@ -65,7 +64,7 @@ const formatMarketCap = (cap, symbol = '', exchange = '', price = 0) => {
   return 'N/A';
 };
 
-const formatVolume = (vol, symbol = '', exchange = '', price = 0) => {
+const formatVolume = (vol, symbol = '', exchange = '') => {
   if (vol !== null && vol !== undefined && !isNaN(vol) && vol > 0) {
     return formatCompactCurrency(vol, symbol, exchange);
   }
@@ -484,7 +483,6 @@ const StockAnalyzer = () => {
   const [marketPulse, setMarketPulse] = useState(null);
   const [sortBy, setSortBy] = useState('marketCap');
   const [viewMode, setViewMode] = useState('grid');
-  const { addNotification } = useNotification();
 
   // Fetch market pulse on mount
   useEffect(() => {

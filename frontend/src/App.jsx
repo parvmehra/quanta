@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
@@ -6,20 +6,30 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider } from './contexts/AuthContext';
 
-import Header from './components/Header';
-import Footer from './components/Footer';
+import PublicLayout from './layouts/PublicLayout';
+import AppShell from './layouts/AppShell';
 import PhoneOnboardingModal from './components/PhoneOnboardingModal';
-import Home from './pages/Home';
-import StockAnalyzer from './pages/StockAnalyzer';
-import StockDetails from './pages/StockDetails';
-import TradingTerminal from './pages/TradingTerminal';
-import Portfolio from './pages/Portfolio';
-import About from './pages/About';
-import Login from './pages/login';
-import Signup from './pages/signup';
-import Profile from './pages/Profile';
-import FAQ from './pages/FAQ';
 import AuthLayout from './components/authLayout';
+
+import Home from './pages/Home';
+import About from './pages/About';
+const Login = lazy(() => import('./pages/login'));
+const Signup = lazy(() => import('./pages/signup'));
+const StockAnalyzer = lazy(() => import('./pages/StockAnalyzer'));
+const StockDetails = lazy(() => import('./pages/StockDetails'));
+const TradingTerminal = lazy(() => import('./pages/TradingTerminal'));
+const Portfolio = lazy(() => import('./pages/Portfolio'));
+const Profile = lazy(() => import('./pages/Profile'));
+const FAQ = lazy(() => import('./pages/FAQ'));
+import NotFound from './pages/NotFound';
+
+const Loading = () => (
+  <div role="status" aria-label="Loading" style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}>
+    <div className="animate-spin" style={{ width: 24, height: 24, border: '2px solid var(--q-border)', borderTopColor: 'var(--q-info)', borderRadius: '50%' }} />
+  </div>
+);
+
+const guard = (el) => <AuthLayout>{el}</AuthLayout>;
 
 function App() {
   return (
@@ -27,82 +37,41 @@ function App() {
       <NotificationProvider>
         <Router>
           <AuthProvider>
-            <div className="app">
-              <Toaster 
-                 position="bottom-right"
-                 toastOptions={{
-                   style: {
-                     background: 'var(--bg-elevated)',
-                     color: 'var(--text-1)',
-                     border: '1px solid var(--border)',
-                     fontFamily: 'var(--font-body)'
-                   }
-                 }}
-              />
-              <PhoneOnboardingModal />
-              <Header />
-              <main>
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route 
-                    path="/analyzer" 
-                    element={<StockAnalyzer />} 
-                  />
-                  <Route 
-                    path="/stock/:symbol" 
-                    element={<StockDetails />} 
-                  />
-                  {/* Protected trading and portfolio routes */}
-                  <Route
-                    path="/trade/:symbol"
-                    element={
-                      <AuthLayout>
-                        <TradingTerminal />
-                      </AuthLayout>
-                    }
-                  />
-                  <Route
-                    path="/trade"
-                    element={
-                      <AuthLayout>
-                        <TradingTerminal />
-                      </AuthLayout>
-                    }
-                  />
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  background: 'var(--q-surface-2)',
+                  color: 'var(--q-text)',
+                  border: '1px solid var(--q-border)',
+                  fontFamily: 'var(--q-font)',
+                },
+              }}
+            />
+            <PhoneOnboardingModal />
+            <Suspense fallback={<Loading />}>
+            <Routes>
+              {/* Landing + authentication: top-navigation layout */}
+              <Route element={<PublicLayout />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+              </Route>
 
-                  <Route
-                    path="/portfolio"
-                    element={
-                      <AuthLayout>
-                        <Portfolio />
-                      </AuthLayout>
-                    }
-                  />
-
-                  <Route
-                    path="/profile"
-                    element={
-                      <AuthLayout>
-                        <Profile />
-                      </AuthLayout>
-                    }
-                  />
-
-                  <Route
-                    path="/faq"
-                    element={
-                      <AuthLayout>
-                        <FAQ />
-                      </AuthLayout>
-                    }
-                  />
-                  <Route path="/about" element={<About />} />
-                  <Route path='/login' element={<Login />} />
-                  <Route path='/signup' element={<Signup />} />
-                </Routes>
-              </main>
-              <Footer />
-            </div>
+              {/* Application: sidebar shell */}
+              <Route element={<AppShell />}>
+                <Route path="/analyzer" element={<StockAnalyzer />} />
+                <Route path="/stock/:symbol" element={<StockDetails />} />
+                <Route path="/trade" element={guard(<TradingTerminal />)} />
+                <Route path="/trade/:symbol" element={guard(<TradingTerminal />)} />
+                <Route path="/portfolio" element={guard(<Portfolio />)} />
+                <Route path="/profile" element={guard(<Profile />)} />
+                <Route path="/faq" element={<FAQ />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+            </Suspense>
           </AuthProvider>
         </Router>
       </NotificationProvider>
@@ -111,4 +80,3 @@ function App() {
 }
 
 export default App;
-

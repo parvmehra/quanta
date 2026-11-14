@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LineChart, Menu, X, Bell, User, LogOut, Search, HelpCircle, UserCog } from 'lucide-react';
+import QuantaMark from './QuantaMark';
+import { Menu, X, Bell, User, LogOut, Search, HelpCircle, UserCog } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -76,11 +77,11 @@ const Header = () => {
     <header className={`header${isScrolled ? ' scrolled' : ''}`} role="banner">
       <div className="header-container">
         {/* Logo */}
-        <Link to="/" className="logo" aria-label="MarketLens home">
+        <Link to="/" className="logo" aria-label="Quanta home">
           <div className="logo-icon">
-            <LineChart size={20} strokeWidth={2.5} />
+            <QuantaMark size={20} />
           </div>
-          MarketLens
+          Quanta
         </Link>
 
         {/* Desktop Navigation */}

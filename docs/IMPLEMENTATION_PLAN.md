@@ -161,3 +161,16 @@ No change to the workflow: `cd backend && npm install && npm run dev`; `cd front
 ## 8. Phase completion checklist (applies to every phase)
 
 1. `npm install` clean on both apps. 2. Both dev servers start. 3. Affected routes load; no new console errors. 4. Relevant tests pass. 5. ESLint clean on touched files. 6. Docs updated. 7. Report: what changed, what is outstanding, any limitation documented rather than hidden.
+
+---
+
+## 9. Progress log
+
+**Phase 1 — done (2026-11-14).** Delivered: clean baseline commit; fresh repo; `JWT_SECRET` fail-fast; `debugCode` no longer returned in production; helmet + `/api/health`; CORS defaults limited to localhost + `CORS_ORIGIN`; port unified to 3001; `.env.example` rewritten; old third-party credentials removed from the working `.env` files (originals backed up outside the repo); Quanta branding; design tokens (`styles/tokens.css`); `AppShell` (collapsible sidebar, mobile drawer, search with `/` hotkey, schedule-based market status, index strip from real data with unavailable state, notifications, user menu) and `PublicLayout`; shared UI primitives; 404 route; route-level code splitting (main bundle 1,059 kB → 340 kB); local Inter font (no Google Fonts request); lint errors 49 → 0 (15 hook-dependency warnings remain, to be fixed as each page is rewritten).
+
+Deviations from the plan (all small):
+- `/faq` is now public (it is static help content).
+- `TradingContext.jsx` (dead simulated terminal) deleted now instead of Phase 6B; `ws` and `react-hook-form` removed.
+- eslint config relaxed for three rules (unused catch variable, empty catch block, context-file export warning); real unused code was fixed rather than silenced.
+- Sidebar shows only routes that exist today; Dashboard, Market Overview, Watchlist, Orders, AI Advisor, Wallet, Settings appear when those pages are built.
+- Not done in Phase 1 (moved): the 15 remaining hook warnings; Google sign-in disabled until a Firebase config is supplied.

@@ -25,9 +25,9 @@ const FAQ_DATA = [
     id: 'a1',
     category: 'getting-started',
     categoryName: 'Getting Started',
-    question: 'What is MarketLens and what tools does it provide?',
+    question: 'What is Quanta and what tools does it provide?',
     answer:
-      'MarketLens is an institutional-grade financial analytics and paper-trading platform designed for both global (NASDAQ, NYSE) and Indian (NSE, BSE) stock markets. It provides real-time market screening, interactive candlestick and sparkline charts, technical indicators, multi-broker CSV portfolio imports (Zerodha, Groww, Angel One), simulated order execution, and multi-channel notifications via Nodemailer email and Twilio SMS.',
+      'Quanta is an institutional-grade financial analytics and paper-trading platform designed for both global (NASDAQ, NYSE) and Indian (NSE, BSE) stock markets. It provides real-time market screening, interactive candlestick and sparkline charts, technical indicators, multi-broker CSV portfolio imports (Zerodha, Groww, Angel One), simulated order execution, and multi-channel notifications via Nodemailer email and Twilio SMS.',
   },
   {
     id: 'a2',
@@ -35,7 +35,7 @@ const FAQ_DATA = [
     categoryName: 'Getting Started',
     question: 'How do I create and activate an account?',
     answer:
-      'Click the "Sign Up" button on the navigation header. Provide your full name, a valid email address, and a secure password (minimum 8 characters, containing uppercase and numerical characters). After submitting the registration form, MarketLens dispatches a 6-digit confirmation code via Nodemailer. Enter this code to verify mailbox ownership and activate your account.',
+      'Click the "Sign Up" button on the navigation header. Provide your full name, a valid email address, and a secure password (minimum 8 characters, containing uppercase and numerical characters). After submitting the registration form, Quanta dispatches a 6-digit confirmation code via Nodemailer. Enter this code to verify mailbox ownership and activate your account.',
   },
   {
     id: 'a3',
@@ -43,7 +43,7 @@ const FAQ_DATA = [
     categoryName: 'Getting Started',
     question: 'How does Google Sign-In work and how is it secured?',
     answer:
-      'MarketLens supports streamlined Google authentication. When signing in with Google, your email is verified automatically by Google OAuth. First-time Google users are provisioned with an initial $500,000 paper trading margin and presented with a non-blocking prompt to optionally add and verify a mobile number for SMS notifications.',
+      'Quanta supports streamlined Google authentication. When signing in with Google, your email is verified automatically by Google OAuth. First-time Google users are provisioned with an initial $500,000 paper trading margin and presented with a non-blocking prompt to optionally add and verify a mobile number for SMS notifications.',
   },
   {
     id: 'a4',
@@ -51,7 +51,7 @@ const FAQ_DATA = [
     categoryName: 'Getting Started',
     question: 'How do I add and verify my mobile number for SMS alerts?',
     answer:
-      'Navigate to your Account Profile (/profile). Under the "Security & Identity" card, click "Verify Phone". Enter your mobile number in standard international E.164 format (e.g., +14155552671 for US or +919876543210 for India). MarketLens dispatches a 6-digit OTP via Twilio SMS. Once confirmed, your phone status updates to "Verified" and SMS notifications are unlocked.',
+      'Navigate to your Account Profile (/profile). Under the "Security & Identity" card, click "Verify Phone". Enter your mobile number in standard international E.164 format (e.g., +14155552671 for US or +919876543210 for India). Quanta dispatches a 6-digit OTP via Twilio SMS. Once confirmed, your phone status updates to "Verified" and SMS notifications are unlocked.',
   },
   {
     id: 'a5',
@@ -101,9 +101,9 @@ const FAQ_DATA = [
     id: 'c1',
     category: 'trading-orders',
     categoryName: 'Trading & Orders',
-    question: 'What is MarketLens paper trading and does it execute real-world trades?',
+    question: 'What is Quanta paper trading and does it execute real-world trades?',
     answer:
-      'CRITICAL NOTICE: MarketLens is a financial analytics, screening, and educational paper-trading simulator. It does NOT connect to a registered securities broker and does NOT execute real-world financial transactions or hold custody of actual company shares. All order submissions simulate trade executions against live market prices for educational risk-free practice.',
+      'CRITICAL NOTICE: Quanta is a financial analytics, screening, and educational paper-trading simulator. It does NOT connect to a registered securities broker and does NOT execute real-world financial transactions or hold custody of actual company shares. All order submissions simulate trade executions against live market prices for educational risk-free practice.',
   },
   {
     id: 'c2',
@@ -119,7 +119,7 @@ const FAQ_DATA = [
     categoryName: 'Trading & Orders',
     question: 'What are Daily Circuit Limits and how are they enforced?',
     answer:
-      'Circuit limits represent regulatory boundaries (typically ±10% from the previous closing price) designed to mitigate catastrophic intraday volatility. The MarketLens Trading Terminal automatically calculates upper and lower circuit bounds and rejects orders placed outside these limits.',
+      'Circuit limits represent regulatory boundaries (typically ±10% from the previous closing price) designed to mitigate catastrophic intraday volatility. The Quanta Trading Terminal automatically calculates upper and lower circuit bounds and rejects orders placed outside these limits.',
   },
   {
     id: 'c4',
@@ -145,7 +145,7 @@ const FAQ_DATA = [
     categoryName: 'Portfolio Analytics',
     question: 'How does Broker CSV import work (Zerodha, Groww, Angel One)?',
     answer:
-      'MarketLens allows one-click CSV imports from major brokers:\n• Zerodha (Kite): Holdings CSV statement.\n• Groww: Stocks statement CSV.\n• Angel One: Portfolio export.\n• Generic CSV: Any CSV with symbol, shares, and avg_price columns.\nClick "Import CSV" on the Portfolio page, drag-and-drop your file, preview the detected holdings, and confirm import to populate your portfolio instantly.',
+      'Quanta allows one-click CSV imports from major brokers:\n• Zerodha (Kite): Holdings CSV statement.\n• Groww: Stocks statement CSV.\n• Angel One: Portfolio export.\n• Generic CSV: Any CSV with symbol, shares, and avg_price columns.\nClick "Import CSV" on the Portfolio page, drag-and-drop your file, preview the detected holdings, and confirm import to populate your portfolio instantly.',
   },
   {
     id: 'd3',
@@ -161,9 +161,9 @@ const FAQ_DATA = [
     id: 'e1',
     category: 'subscriptions',
     categoryName: 'Stock Subscriptions',
-    question: 'What does subscribing to a stock mean in MarketLens?',
+    question: 'What does subscribing to a stock mean in Quanta?',
     answer:
-      'Subscribing to a stock adds it to your active alert watchlist. When subscribed, MarketLens monitors price quote fluctuations and dispatches transactional email and SMS updates (subject to your notification preferences). Subscribing does NOT purchase shares.',
+      'Subscribing to a stock adds it to your active alert watchlist. When subscribed, Quanta monitors price quote fluctuations and dispatches transactional email and SMS updates (subject to your notification preferences). Subscribing does NOT purchase shares.',
   },
   {
     id: 'e2',
@@ -179,9 +179,9 @@ const FAQ_DATA = [
     id: 'f1',
     category: 'wallet',
     categoryName: 'Wallet & Razorpay',
-    question: 'What is the MarketLens Wallet used for?',
+    question: 'What is the Quanta Wallet used for?',
     answer:
-      'The MarketLens Wallet maintains your available simulated margin for paper trading across global equities. It tracks your initial balance, deposits, debits from executed BUY orders, and credits from SELL orders.',
+      'The Quanta Wallet maintains your available simulated margin for paper trading across global equities. It tracks your initial balance, deposits, debits from executed BUY orders, and credits from SELL orders.',
   },
   {
     id: 'f2',
@@ -197,7 +197,7 @@ const FAQ_DATA = [
     categoryName: 'Wallet & Razorpay',
     question: 'Can wallet funds be withdrawn as actual fiat currency?',
     answer:
-      'No. MarketLens wallet funds represent paper-trading margin strictly for simulation and educational trading practice. Wallet balances hold no monetary cash value and cannot be withdrawn to external bank accounts.',
+      'No. Quanta wallet funds represent paper-trading margin strictly for simulation and educational trading practice. Wallet balances hold no monetary cash value and cannot be withdrawn to external bank accounts.',
   },
 
   // ── CATEGORY G: Account Security & Notifications ─────────────────────────
@@ -225,15 +225,15 @@ const FAQ_DATA = [
     categoryName: 'Market Data & Risk',
     question: 'Why might prices vary slightly or appear delayed?',
     answer:
-      'MarketLens aggregates live quotes from Yahoo Finance, Finnhub, and Twelve Data. While US quotes and major indices are real-time, certain exchanges apply standard 15-minute regulatory delays during active trading sessions. Off-market hours reflect the latest official closing price.',
+      'Quanta aggregates live quotes from Yahoo Finance, Finnhub, and Twelve Data. While US quotes and major indices are real-time, certain exchanges apply standard 15-minute regulatory delays during active trading sessions. Off-market hours reflect the latest official closing price.',
   },
   {
     id: 'h2',
     category: 'market-data',
     categoryName: 'Market Data & Risk',
-    question: 'What is MarketLens investment policy regarding financial advice?',
+    question: 'What is Quanta investment policy regarding financial advice?',
     answer:
-      'MarketLens provides informational analytics, technical indicators, and simulated trading strictly for educational and portfolio evaluation purposes. Nothing on MarketLens constitutes personalized investment, tax, or legal advice. Historical returns do not guarantee future investment performance.',
+      'Quanta provides informational analytics, technical indicators, and simulated trading strictly for educational and portfolio evaluation purposes. Nothing on Quanta constitutes personalized investment, tax, or legal advice. Historical returns do not guarantee future investment performance.',
   },
 ];
 
@@ -286,7 +286,7 @@ const FAQ = () => {
           </div>
 
           <h1 className="faq-title">
-            How can we help you trade with <span className="text-green">MarketLens</span>?
+            How can we help you trade with <span className="text-green">Quanta</span>?
           </h1>
 
           <p className="faq-subtitle">

@@ -43,7 +43,7 @@ const Profile = () => {
   const [devOtp, setDevOtp] = useState(null);
   const [otpStep, setOtpStep] = useState('SEND'); // 'SEND' | 'VERIFY'
   const [otpLoading, setOtpLoading] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [, setResendCooldown] = useState(0);
 
   // Wallet Top-Up Modal State
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -54,7 +54,7 @@ const Profile = () => {
   // Subscriptions & Logs State
   const [subscriptions, setSubscriptions] = useState([]);
   const [notificationLogs, setNotificationLogs] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
+  const [, setLoadingData] = useState(true);
 
   useEffect(() => {
     if (user?.notificationPreferences) {

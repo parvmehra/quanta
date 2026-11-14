@@ -11,7 +11,7 @@ const Footer = () => {
           <div className="footer-section footer-brand">
             <div className="footer-logo">
               <Activity className="footer-logo-icon" />
-              <span>MarketLens</span>
+              <span>Quanta</span>
             </div>
             <p className="footer-description">
               Professional stock analysis platform for intelligent investment
@@ -60,7 +60,7 @@ const Footer = () => {
 
         {/* Bottom */}
         <div className="footer-bottom">
-          <p>&copy; 2025 MarketLens. All rights reserved.</p>
+          <p>&copy; 2025 Quanta. All rights reserved.</p>
         </div>
       </div>
     </footer>

@@ -96,7 +96,7 @@ const About = () => {
             Designed for <span className="about-title-accent">intelligent decisions.</span>
           </h1>
           <p className="about-subtitle">
-            MarketLens bridges institutional-grade market data with a human-designed,
+            Quanta bridges institutional-grade market data with a human-designed,
             responsive financial analytics platform for global stock researchers.
           </p>
         </section>
@@ -108,7 +108,7 @@ const About = () => {
               <span className="about-section-tag">MISSION STATEMENT</span>
               <h2>Democratizing Professional Financial Intelligence</h2>
               <p>
-                At MarketLens, we believe that every investor deserves access to
+                At Quanta, we believe that every investor deserves access to
                 professional-grade investment tools, technical analysis, and clean fundamental metrics.
                 Our mission is to eliminate information asymmetry by providing sophisticated,
                 uncluttered market intelligence.
@@ -150,7 +150,7 @@ const About = () => {
         <section className="about-features-section">
           <div className="about-section-header">
             <span className="about-section-tag">CAPABILITIES</span>
-            <h2>What Sets MarketLens Apart</h2>
+            <h2>What Sets Quanta Apart</h2>
             <p>Every tool and interface element was purpose-built for speed, clarity, and analytical depth.</p>
           </div>
 

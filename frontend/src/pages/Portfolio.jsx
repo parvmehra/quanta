@@ -334,7 +334,7 @@ const Portfolio = () => {
     setImportError(null);
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/protfolio/bulk`, { holdings: importPreview }, { withCredentials: true });
+      await axios.post(`${API_BASE_URL}/api/protfolio/bulk`, { holdings: importPreview }, { withCredentials: true });
       setImportSuccess(`Successfully imported ${importPreview.length} holdings!`);
       setImportPreview([]);
       setImportFile(null);

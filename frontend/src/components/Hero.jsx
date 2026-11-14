@@ -263,7 +263,6 @@ const generateCandlesForStock = (stock, currentPrice, currentChange, timeframe, 
   const candleCount = 20;
   const delta = (p * (stock.baseChangePercent || 1.2)) / 100;
   const startP = p - delta;
-  const step = delta / (candleCount - 1);
   const volBase = 65;
 
   const candles = [];

@@ -4,9 +4,9 @@
    ============================================ */
 
 .sa-page {
-  padding-top: 56px; /* Fixed nav offset */
+  padding-top: 0;
   background: var(--bg-body);
-  min-height: calc(100vh - 56px);
+  min-height: auto;
   color: var(--text-1);
 }
 

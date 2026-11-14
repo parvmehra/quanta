@@ -77,7 +77,7 @@ const Signup = () => {
 
     try {
       await verifyEmail(email.trim(), verifyCode.trim());
-      addNotification('Welcome to MarketLens!', 'Your account has been verified successfully.', 'success');
+      addNotification('Welcome to Quanta!', 'Your account has been verified successfully.', 'success');
       navigate('/analyzer');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid or expired verification code.');
@@ -130,7 +130,7 @@ const Signup = () => {
       const idToken = await result.user.getIdToken();
       
       await googleLogin({ idToken });
-      addNotification('Signed in with Google', 'Welcome to MarketLens!', 'success');
+      addNotification('Signed in with Google', 'Welcome to Quanta!', 'success');
       navigate('/analyzer');
     } catch (err) {
       console.error('Google Sign-Up error:', err);

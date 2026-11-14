@@ -3,8 +3,8 @@
    ========================================================================== */
 
 .faq-page {
-  padding-top: 70px;
-  min-height: calc(100vh - 70px);
+  padding-top: 0;
+  min-height: auto;
   background: var(--bg-body, #0a0e0c);
   color: #e2e8f0;
 }

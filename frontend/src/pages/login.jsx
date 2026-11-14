@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, Eye, EyeOff, CheckCircle2, RefreshCw, KeyRound, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -59,7 +59,7 @@ const Login = () => {
         startLoginOtpCooldown();
         return;
       }
-      addNotification('Success', 'Welcome back to MarketLens', 'success');
+      addNotification('Success', 'Welcome back to Quanta', 'success');
       navigate('/analyzer');
     } catch (err) {
       const data = err.response?.data;

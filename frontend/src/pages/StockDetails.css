@@ -4,8 +4,8 @@
 
 /* === PAGE === */
 .sd-page {
-  min-height: 100vh;
-  padding: 100px 24px 60px;
+  min-height: auto;
+  padding: 24px 24px 60px;
   position: relative;
   overflow: hidden;
 }

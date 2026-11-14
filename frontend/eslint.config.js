@@ -23,7 +23,10 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^[A-Z_]', caughtErrors: 'none' }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      // Context modules legitimately export a provider and its hook together.
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
 ])
