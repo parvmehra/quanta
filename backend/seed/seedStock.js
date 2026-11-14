@@ -18,21 +18,17 @@ connectDB();
 
 const fetchAndSeedStocks = async () => {
   try {
-    // Delete all existing stock documents before seeding new data
     await Stock.deleteMany({});
     console.log('🗑️ All previous stock data deleted.');
 
     for (const symbol of symbols) {
       try {
-        // --- Fetch Quote ---
         const quoteRes = await axios.get(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`);
         const quote = quoteRes.data;
 
-        // --- Fetch Company Profile ---
         const profileRes = await axios.get(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${apiKey}`);
         const profile = profileRes.data;
 
-        // --- Fetch News (past 7 days) ---
         const toDate = new Date();
         const fromDate = new Date();
         fromDate.setDate(toDate.getDate() - 7);
@@ -45,7 +41,6 @@ const fetchAndSeedStocks = async () => {
           datetime: new Date(item.datetime * 1000)
         }));
 
-        // --- Insert new stock document ---
         const newStock = new Stock({
           symbol,
           name: profile.name || symbol,
@@ -86,9 +81,3 @@ const fetchAndSeedStocks = async () => {
 fetchAndSeedStocks();
 
 
-// 6. FEATURE IMPLEMENTED
-// 7. SCREENSHOT
-// 8. CHALLENGES FACED
-// 9. FEATURE ENHANCEMENT
-// 10. CONCLUSION
-// 11. APPENDIX

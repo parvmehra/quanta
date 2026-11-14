@@ -6,7 +6,6 @@ import { API_BASE_URL, SOCKET_URL } from "../config";
 import { Plus, TrendingUp, TrendingDown, Eye, Trash2, Edit3, Loader, X, Upload, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import "./Portfolio.css";
 
-// --- Broker CSV parsing configurations ---
 const BROKER_CONFIGS = {
   zerodha: {
     name: "Zerodha (Kite)",
@@ -40,7 +39,6 @@ const BROKER_CONFIGS = {
   },
 };
 
-// --- CSV Parser helper ---
 const parseCSV = (text) => {
   const lines = text.trim().split("\n").map((l) => l.trim()).filter(Boolean);
   if (lines.length < 2) return [];
@@ -66,7 +64,6 @@ const Portfolio = () => {
   const [currentItemId, setCurrentItemId] = useState(null);
   const [formData, setFormData] = useState({ symbol: "", shares: "", avgPrice: "", name: "", currentPrice: "" });
 
-  // --- Import state ---
   const [showImportModal, setShowImportModal] = useState(false);
   const [selectedBroker, setSelectedBroker] = useState("zerodha");
   const [importFile, setImportFile] = useState(null);
@@ -77,7 +74,6 @@ const Portfolio = () => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
-  // --- Fetch portfolio
   const fetchPortfolio = async () => {
     try {
       setLoading(true);
@@ -86,7 +82,6 @@ const Portfolio = () => {
       setPortfolioItems(items);
       setError(null);
 
-      // After loading portfolio, fetch live prices for all holdings
       if (items.length > 0) {
         fetchLivePrices(items);
       }
@@ -98,7 +93,6 @@ const Portfolio = () => {
     }
   };
 
-  // --- Fetch live prices for all portfolio symbols using batch endpoint
   const fetchLivePrices = async (items) => {
     try {
       const uniqueSymbols = [...new Set(items.map(item => item.symbol).filter(Boolean))];
@@ -126,7 +120,6 @@ const Portfolio = () => {
   useEffect(() => {
     fetchPortfolio();
 
-    // Setup WebSocket
     const socket = io(SOCKET_URL);
     socketRef.current = socket;
 
@@ -150,7 +143,6 @@ const Portfolio = () => {
     };
   }, []);
 
-  // Subscribe to all portfolio items when they change
   const subscribedSymbols = useRef(new Set());
   useEffect(() => {
     if (socketRef.current && portfolioItems.length > 0) {
@@ -163,7 +155,6 @@ const Portfolio = () => {
     }
   }, [portfolioItems.length]);
 
-  // --- Calculations
   const totalValue = (portfolioItems || []).reduce(
     (sum, item) => sum + (item.shares || 0) * (item.currentPrice || item.avgPrice || 0),
     0
@@ -177,7 +168,6 @@ const Portfolio = () => {
   const totalGainLoss = totalValue - totalCost;
   const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
 
-  // --- Modal handlers
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
@@ -208,7 +198,6 @@ const Portfolio = () => {
     setCurrentItemId(null);
   };
 
-  // --- CRUD
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -244,7 +233,6 @@ const Portfolio = () => {
     }
   };
 
-  // --- Import handlers ---
   const openImportModal = () => {
     setShowImportModal(true);
     setImportFile(null);
@@ -285,7 +273,6 @@ const Portfolio = () => {
         const config = BROKER_CONFIGS[selectedBroker];
         const cols = config.columns;
 
-        // Map CSV rows to our schema
         const mapped = rows
           .map((row) => ({
             symbol: row[cols.symbol] || "",
@@ -365,7 +352,6 @@ const Portfolio = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Re-parse when broker selection changes and file is already loaded
   useEffect(() => {
     if (importFile) {
       processFile(importFile);
@@ -375,7 +361,6 @@ const Portfolio = () => {
   return (
     <div className="portfolio-page">
       <div className="container">
-        {/* Header */}
         <div className="portfolio-header">
           <div className="portfolio-title">
             <h1>My Portfolio</h1>
@@ -391,7 +376,6 @@ const Portfolio = () => {
           </div>
         </div>
 
-        {/* Summary */}
         <div className="portfolio-summary">
           <div className="summary-card">
             <h3>Total Portfolio Value</h3>
@@ -411,7 +395,6 @@ const Portfolio = () => {
           </div>
         </div>
 
-        {/* Add/Edit Modal */}
         {showModal && (
           <div className="modal-overlay" onClick={closeModal}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -493,7 +476,6 @@ const Portfolio = () => {
           </div>
         )}
 
-        {/* === IMPORT MODAL === */}
         {showImportModal && (
           <div className="modal-overlay" onClick={closeImportModal}>
             <div className="modal-content import-modal" onClick={(e) => e.stopPropagation()}>
@@ -505,7 +487,6 @@ const Portfolio = () => {
               </div>
 
               <div className="import-body">
-                {/* Broker Selector */}
                 <div className="form-group">
                   <label>Select Your Broker</label>
                   <select
@@ -519,13 +500,11 @@ const Portfolio = () => {
                   </select>
                 </div>
 
-                {/* Instructions */}
                 <div className="import-instructions">
                   <FileText size={16} />
                   <span>{BROKER_CONFIGS[selectedBroker].instructions}</span>
                 </div>
 
-                {/* File Upload */}
                 <div
                   className={`file-drop-zone ${isDragging ? "dragging" : ""} ${importFile ? "has-file" : ""}`}
                   onDrop={handleDrop}
@@ -559,7 +538,6 @@ const Portfolio = () => {
                   <FileText size={14} /> Download sample CSV template
                 </button>
 
-                {/* Error / Success Messages */}
                 {importError && (
                   <div className="import-message import-error">
                     <AlertCircle size={16} /> {importError}
@@ -571,7 +549,6 @@ const Portfolio = () => {
                   </div>
                 )}
 
-                {/* Preview Table */}
                 {importPreview.length > 0 && (
                   <div className="import-preview">
                     <h4>Preview ({importPreview.length} holdings found)</h4>
@@ -600,7 +577,6 @@ const Portfolio = () => {
                   </div>
                 )}
 
-                {/* Actions */}
                 <div className="form-actions">
                   <button type="button" className="btn btn-secondary" onClick={closeImportModal}>
                     Cancel
@@ -619,7 +595,6 @@ const Portfolio = () => {
           </div>
         )}
 
-        {/* Holdings */}
         <div className="portfolio-holdings">
           <h2>Holdings</h2>
           {loading ? (

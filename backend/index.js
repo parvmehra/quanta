@@ -1,4 +1,4 @@
-import './config/env.js'; // loads .env and validates JWT_SECRET (exits if unsafe)
+import './config/env.js';
 import express from 'express';
 import helmet from 'helmet';
 import http from 'http';
@@ -14,10 +14,7 @@ import marketRoutes from './routes/marketRoutes.js';
 import { store, saveStore } from './dataStore.js';
 import cookieParser from "cookie-parser";
 import crypto from 'crypto';
-// import connectDB from './config/connectDB.js';
 
-// Comma-separated list of extra allowed origins (e.g. your deployed frontend URL).
-// localhost / 127.0.0.1 on any port are always allowed for local development.
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173,http://127.0.0.1:5173")
   .split(',')
   .map((origin) => origin.trim())
@@ -30,12 +27,10 @@ const isOriginAllowed = (origin) => {
   return false;
 };
 
-// connectDB();
 const app = express();
 app.set('trust proxy', 1);
 const server = http.createServer(app);
 
-// ─── Socket.IO setup ────────────────────────────────────────────────
 const io = new SocketIO(server, {
   cors: {
     origin: function (origin, callback) {
@@ -66,7 +61,6 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Routes
 app.use('/api/stocks', stockRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/protfolio', protfolioRoutes);
@@ -75,12 +69,10 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/market', marketRoutes);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'quanta', time: Date.now() }));
 
-// ─── Live price broadcasting ────────────────────────────────────────
 const AV_BASE = 'https://www.alphavantage.co/query';
 const AV_KEY = process.env.ALPHA_VANTAGE_API_KEY || 'demo';
-const RATE_LIMIT_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 hours interval
+const RATE_LIMIT_INTERVAL_MS = 2 * 60 * 60 * 1000;
 
-// Track which symbols have active subscribers: symbol -> Set<socketId>
 const symbolSubscribers = new Map();
 let globalPollingTimer = null;
 let currentPollingIndex = 0;
@@ -156,7 +148,6 @@ function stopGlobalPolling() {
 io.on('connection', (socket) => {
   console.log(`🔌 Client connected: ${socket.id}`);
 
-  // --- Chat Handlers ---
   socket.on('join_chat', (roomId) => {
     socket.join(`chat_${roomId}`);
     console.log(`💬 User joined chat room: ${roomId}`);
@@ -181,13 +172,10 @@ io.on('connection', (socket) => {
     store.messages.push(message);
     saveStore();
 
-    // Broadcast to the user's specific room
     io.to(`chat_${data.roomId}`).emit('receive_message', message);
     
-    // Broadcast to all admins so they get instant updates
     io.to('admin_room').emit('receive_message', message);
   });
-  // ---------------------
 
   socket.on('subscribe', (symbol) => {
     if (!symbol) return;
@@ -197,12 +185,10 @@ io.on('connection', (socket) => {
 
     if (!symbolSubscribers.has(sym)) {
       symbolSubscribers.set(sym, new Set());
-      // First time someone subscribes to this, try to fetch it immediately (if not spamming)
       setTimeout(() => fetchAndBroadcast(sym), 1000); 
     }
     symbolSubscribers.get(sym).add(socket.id);
 
-    // Ensure global polling is running
     startGlobalPolling();
     console.log(`📥 ${socket.id} subscribed to ${sym} (${symbolSubscribers.get(sym).size} subscribers)`);
   });
@@ -227,7 +213,6 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`❌ Client disconnected: ${socket.id}`);
 
-    // Clean up all subscriptions for this socket
     for (const [sym, subs] of symbolSubscribers.entries()) {
       subs.delete(socket.id);
       if (subs.size === 0) {
@@ -238,7 +223,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// ─── Start server ───────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

@@ -2,10 +2,6 @@ import { getCurrencyCode } from './currency.js';
 
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 
-/**
- * Merge individual lots (one row per buy) into one position per symbol.
- * avgCost is share-weighted: sum(shares * lotPrice) / sum(shares).
- */
 export function aggregateLots(lots = []) {
   const map = new Map();
   for (const lot of lots) {
@@ -21,7 +17,6 @@ export function aggregateLots(lots = []) {
   return [...map.values()].map((p) => ({ ...p, avgCost: p.cost / p.shares }));
 }
 
-/** Attach live quotes. Positions without a usable price keep value/pnl = null. */
 export function valuePositions(positions, quotes = {}) {
   return positions.map((p) => {
     const q = quotes[p.symbol];
@@ -41,7 +36,6 @@ export function valuePositions(positions, quotes = {}) {
   });
 }
 
-/** Totals per currency. Currencies are never added together (no FX conversion). */
 export function totalsByCurrency(positions) {
   const out = {};
   for (const p of positions) {

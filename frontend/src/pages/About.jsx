@@ -88,7 +88,6 @@ const About = () => {
     <div className="about-page">
       <div className="about-container">
         
-        {/* Hero Section */}
         <section className="about-hero">
           <span className="about-eyebrow">OUR STORY & VISION</span>
           <h1 className="about-title">
@@ -101,7 +100,6 @@ const About = () => {
           </p>
         </section>
 
-        {/* Mission Card with Live Stats */}
         <section className="about-mission-section">
           <div className="about-mission-card">
             <div className="about-mission-text">
@@ -146,7 +144,6 @@ const About = () => {
           </div>
         </section>
 
-        {/* Features Grid */}
         <section className="about-features-section">
           <div className="about-section-header">
             <span className="about-section-tag">CAPABILITIES</span>
@@ -167,7 +164,6 @@ const About = () => {
           </div>
         </section>
 
-        {/* Values Section */}
         <section className="about-values-section">
           <div className="about-section-header">
             <span className="about-section-tag">CORE PRINCIPLES</span>
@@ -185,7 +181,6 @@ const About = () => {
           </div>
         </section>
 
-        {/* Team Section */}
         <section className="about-team-section">
           <div className="about-section-header">
             <span className="about-section-tag">ENGINEERING & PRODUCT</span>
@@ -206,7 +201,6 @@ const About = () => {
           </div>
         </section>
 
-        {/* CTA Banner */}
         <section className="about-cta-section">
           <div className="about-cta-card">
             <h2>Ready to Elevate Your Market Research?</h2>

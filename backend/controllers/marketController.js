@@ -7,7 +7,7 @@ const yahooFinance = typeof yahooFinancePkg === 'function'
 const SOURCE = 'Yahoo Finance';
 const OVERVIEW_TTL_MS = 60 * 1000;
 const MOVERS_TTL_MS = 2 * 60 * 1000;
-const MIN_US_MARKET_CAP = 2_000_000_000; // hide micro-cap noise from the US screener lists
+const MIN_US_MARKET_CAP = 2_000_000_000;
 
 const INDICES = [
   { symbol: '^GSPC', name: 'S&P 500', region: 'US' },
@@ -17,8 +17,6 @@ const INDICES = [
   { symbol: '^BSESN', name: 'S&P BSE SENSEX', region: 'IN' },
 ];
 
-// Static list used for the India movers (Yahoo's predefined screeners are US-only).
-// It is a fixed universe, not a live index membership feed, and the API says so.
 const NIFTY_50 = [
   'RELIANCE', 'TCS', 'HDFCBANK', 'ICICIBANK', 'INFY', 'BHARTIARTL', 'SBIN', 'LT', 'ITC', 'HINDUNILVR',
   'KOTAKBANK', 'AXISBANK', 'BAJFINANCE', 'MARUTI', 'SUNPHARMA', 'ASIANPAINT', 'HCLTECH', 'NTPC', 'ULTRACEMCO', 'TITAN',
@@ -27,7 +25,7 @@ const NIFTY_50 = [
   'TATACONSUM', 'SBILIFE', 'HDFCLIFE', 'BRITANNIA', 'DIVISLAB', 'HEROMOTOCO', 'TRENT', 'TMPV', 'SHRIRAMFIN', 'BAJAJ-AUTO',
 ].map((s) => `${s}.NS`);
 
-const cache = new Map(); // key -> { at, data }
+const cache = new Map();
 const fresh = (key, ttl) => {
   const hit = cache.get(key);
   return hit && Date.now() - hit.at < ttl ? hit.data : null;

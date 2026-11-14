@@ -1,9 +1,5 @@
-/* ============================================
-   About — Dark Fintech About Page Styles
-   ============================================ */
-
 .about-page {
-  padding-top: 56px; /* Header offset */
+  padding-top: 56px;
   background: var(--bg-body);
   min-height: 100vh;
   color: var(--text-1);
@@ -15,7 +11,6 @@
   padding: 60px 24px 100px;
 }
 
-/* === HERO SECTION === */
 .about-hero {
   text-align: center;
   max-width: 760px;
@@ -51,7 +46,6 @@
   line-height: 1.65;
 }
 
-/* === SECTION HEADERS === */
 .about-section-header {
   text-align: center;
   max-width: 640px;
@@ -80,7 +74,6 @@
   font-size: 0.9375rem;
 }
 
-/* === MISSION CARD === */
 .about-mission-section {
   margin-bottom: 72px;
 }
@@ -132,7 +125,6 @@
   flex-shrink: 0;
 }
 
-/* Mission Stats Column */
 .about-mission-stats {
   display: flex;
   flex-direction: column;
@@ -169,7 +161,6 @@
   font-weight: 500;
 }
 
-/* === FEATURES GRID (6 Cards) === */
 .about-features-section {
   margin-bottom: 80px;
 }
@@ -225,7 +216,6 @@
   line-height: 1.6;
 }
 
-/* === VALUES GRID (4 Cards) === */
 .about-values-section {
   margin-bottom: 80px;
 }
@@ -270,7 +260,6 @@
   line-height: 1.55;
 }
 
-/* === TEAM GRID (4 Cards) === */
 .about-team-section {
   margin-bottom: 80px;
 }
@@ -324,7 +313,6 @@
   color: var(--text-2);
 }
 
-/* === CTA BANNER === */
 .about-cta-section {}
 
 .about-cta-card {
@@ -398,7 +386,6 @@
   border-color: var(--border-strong);
 }
 
-/* === RESPONSIVE === */
 @media (max-width: 1024px) {
   .about-mission-card {
     grid-template-columns: 1fr;

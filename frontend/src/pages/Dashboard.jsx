@@ -11,13 +11,12 @@ import { getMarketStatus } from '../utils/marketHours';
 import { displaySymbol, formatDateTime, formatMoney, formatNumber, formatPrice, formatTime, NA } from '../utils/format';
 import '../styles/workspace.css';
 
-// Categorical palette: no red/green (reserved for gain/loss).
 const PALETTE = ['#60A5FA', '#A78BFA', '#FBBF24', '#F472B6', '#22D3EE', '#FB923C', '#818CF8'];
 const OTHER = '#64748B';
 
 const readWatchlist = () => {
   try {
-    const v = JSON.parse(localStorage.getItem('stockpulse-watchlist') || '[]');
+    const v = JSON.parse(localStorage.getItem('quanta-watchlist') || '[]');
     return Array.isArray(v) ? v.filter((s) => typeof s === 'string').slice(0, 20) : [];
   } catch { return []; }
 };

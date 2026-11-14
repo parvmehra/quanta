@@ -4,7 +4,6 @@ import { protect } from '../middlewares/auth.js';
 
 const router = express.Router();
 
-// Get chat history for a room
 router.get('/:roomId', protect, (req, res) => {
   try {
     const messages = (store.messages || []).filter(m => m.roomId === req.params.roomId);
@@ -14,10 +13,8 @@ router.get('/:roomId', protect, (req, res) => {
   }
 });
 
-// Admin: Get all active rooms
 router.get('/admin/rooms', protect, (req, res) => {
   try {
-    // Only admins can access this route
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: "Not authorized" });
     }
@@ -26,13 +23,12 @@ router.get('/admin/rooms', protect, (req, res) => {
     const roomsMap = new Map();
     
     messages.forEach(msg => {
-      // Keep track of the latest message for each room
       if (!roomsMap.has(msg.roomId)) {
         roomsMap.set(msg.roomId, {
           roomId: msg.roomId,
           lastMessage: msg.text,
           timestamp: msg.timestamp,
-          userName: msg.senderName // initial guess
+          userName: msg.senderName
         });
       } else {
         const room = roomsMap.get(msg.roomId);
@@ -40,7 +36,6 @@ router.get('/admin/rooms', protect, (req, res) => {
           room.lastMessage = msg.text;
           room.timestamp = msg.timestamp;
         }
-        // Update name if we see a non-admin sender
         if (msg.senderName && msg.senderName !== 'Admin') {
             room.userName = msg.senderName;
         }

@@ -2,7 +2,6 @@ import React from 'react';
 import { AlertTriangle, Inbox } from 'lucide-react';
 import './ui.css';
 
-/** Signed percentage / value with colour AND arrow (never colour alone). */
 export function ChangeValue({ value, suffix = '%', digits = 2, className = '' }) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return <span className={`q-change q-change--na ${className}`}>—</span>;
@@ -18,7 +17,6 @@ export function ChangeValue({ value, suffix = '%', digits = 2, className = '' })
   );
 }
 
-/** Segmented tabs. tabs: [{ id, label }] */
 export function Tabs({ tabs, value, onChange, label }) {
   return (
     <div className="q-tabs" role="tablist" aria-label={label}>

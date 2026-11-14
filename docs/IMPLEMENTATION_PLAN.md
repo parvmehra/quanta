@@ -8,15 +8,15 @@ Principles: no rewrite; app stays runnable (`backend: npm run dev`, `frontend: n
 
 ## 1. Key finding that changes the order of work
 
-The brief's phase order puts the backend (Phase 6) last. The audit shows the trading and wallet flows are **client-authoritative** (S1, S3) and the data store is a tracked JSON file (S2). Redesigning the Trading Terminal and Portfolio (Phase 4) on top of that would polish an insecure, non-functional core, and it would force a second UI rewrite when the API contract changes.
+The initial phase order puts the backend work (Phase 6) last. The audit shows the trading and wallet flows are **client-authoritative** (S1, S3) and the data store is a tracked JSON file (S2). Building the Trading Terminal and Portfolio screens (Phase 4) on top of that would polish an insecure, non-functional core, and it would force a second UI rewrite when the API contract changes.
 
-**Proposed adjustment:** keep the brief's phases, but split Phase 6 into a small **Phase 1B (security hygiene + trade API contract)** executed right after the design foundation, and keep the large MongoDB migration where the brief put it but **before** the Phase 4 UI work that depends on it. Details below.
+**Proposed adjustment:** keep the original phases, but split Phase 6 into a small **Phase 1B (security hygiene + trade API contract)** executed right after the design foundation, and keep the large MongoDB migration in its original place but **before** the Phase 4 UI work that depends on it. Details below.
 
 ## 2. Decisions requested (blocking where marked)
 
 | # | Decision | Recommendation |
 |---|---|---|
-| D1 | **Tailwind.** Brief says Tailwind; project uses vanilla CSS and has no Tailwind. | Do **not** add Tailwind. Build the design system with CSS custom properties (`tokens.css`) plus a small set of shared component classes. Fewer dependencies, no build-config change, lowest regression risk with 6 existing CSS files. Reconsider only if you specifically want Tailwind for the portfolio story. **Blocking for Phase 1.** |
+| D1 | **Tailwind.** Tailwind was considered; the project uses vanilla CSS and has no Tailwind. | Do **not** add Tailwind. Build the design system with CSS custom properties (`tokens.css`) plus a small set of shared component classes. Fewer dependencies, no build-config change, lowest regression risk with 6 existing CSS files. Reconsider only if you specifically want Tailwind for the portfolio story. **Blocking for Phase 1.** |
 | D2 | **Git history contains `backend/data.json` (user records/password hashes).** | Untrack it now and add to `.gitignore`. Rewriting history (`git filter-repo`) is destructive and only matters if this repo is, or has been, pushed anywhere public; tell me whether it has. |
 | D3 | **Credential rotation.** `backend/.env` and a Google service-account key sit in the working tree. | You rotate: Mongo user, Gmail app password, Twilio token, Gemini/Finnhub keys, Firebase key. I will not read, print or move them. |
 | D4 | **MongoDB.** Is there an Atlas cluster (M0 free tier is a replica set, so multi-document transactions work)? Is the existing `MONGO_DB_URI` a cluster you want to use? | Use Atlas M0; verify transaction support at startup and refuse to run trading in "unsafe" mode. |
@@ -24,7 +24,7 @@ The brief's phase order puts the backend (Phase 6) last. The audit shows the tra
 | D6 | **Mandatory email-OTP on every login.** Currently every sign-in requires an e-mailed code. | Keep (it's a feature) but make it opt-in per user and keep it working in demo mode. Ask if you want it left as-is. |
 | D7 | **Market segment.** Existing code mixes US (`$`) and NSE/BSE (`₹`) symbols; wallet is USD only. | Keep both exchanges, wallet stays USD, show per-symbol currency, no FX conversion (documented). Alternatively add a simple wallet-currency note. |
 | D8 | **Order types.** Today MARKET/LIMIT/SL all fill instantly. | Implement real semantics: MARKET fills immediately; LIMIT and SL (stop) rest as OPEN orders and are evaluated by a small in-process check on each quote refresh (no workers, no Redis). MIS/CNC product types and their 20% margin: **keep or drop?** I recommend dropping MIS leverage (a paper-trading simplification) unless you rely on it. |
-| D9 | **Support chat.** Not in the brief. | Keep, but require auth for sockets, restrict `join_admin` to `role==='admin'`, move to Mongo. |
+| D9 | **Support chat.** Not in the original feature list. | Keep, but require auth for sockets, restrict `join_admin` to `role==='admin'`, move to Mongo. |
 | D10 | **Naming.** `protfolio` typo is in URLs. | Add `/api/portfolio` as the canonical route; keep `/api/protfolio` as an alias until the frontend is migrated, then remove (documented). |
 
 ## 3. Phases
@@ -81,7 +81,7 @@ Needed before Phases 3–5 touch trading/portfolio/wallet screens.
 - `GET /api/orders`, `DELETE /api/orders/:id` (cancel), `GET /api/positions`, `GET /api/ledger`, `GET /api/wallet` (reads the ledger).
 - `POST /api/wallet/topup` becomes a **clearly labelled simulated deposit** with a per-day cap and ledger entry; no client-supplied reference ids.
 - Realised P&L computed from the ledger at sell time and stored on the SELL ledger entry; unrealised from live quote.
-- If the deployment does **not** support transactions, stop and report (per the brief); fallback proposal: single-document wallet with `$inc` guarded by `balance >= x` and holdings in the same document array. 
+- If the deployment does **not** support transactions, stop and report (agreed rule); fallback proposal: single-document wallet with `$inc` guarded by `balance >= x` and holdings in the same document array. 
 
 **Migration:** `scripts/importLegacyJson.js` reads the gitignored JSON file, hashes untouched, maps IDs, flags suspicious data. Dry-run mode.
 
@@ -141,7 +141,7 @@ Full manual workflow pass, responsive pass (360, 768, 1024, 1440), accessibility
 | Add (optional) | `helmet` | security headers, ~tiny |
 | Add (optional) | `@fontsource-variable/inter` | local Inter font |
 | Add (optional, dev) | `vitest`, `@testing-library/react`, `mongodb-memory-server` | automated tests |
-| Not adding | Tailwind, Redis, Docker, state libraries, ORMs | per brief and D1 |
+| Not adding | Tailwind, Redis, Docker, state libraries, ORMs | per D1 |
 
 ## 6. Local development impact
 

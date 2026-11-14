@@ -17,7 +17,6 @@ import {
 } from './smsService.js';
 import { store } from '../dataStore.js';
 
-// Idempotency cache (in-memory Set with timestamp purge)
 const processedEvents = new Map();
 
 const isEventProcessed = (referenceId) => {
@@ -25,7 +24,6 @@ const isEventProcessed = (referenceId) => {
   if (processedEvents.has(referenceId)) return true;
   processedEvents.set(referenceId, Date.now());
 
-  // Clean old entries after 1 hour
   if (processedEvents.size > 2000) {
     const oneHourAgo = Date.now() - 3600000;
     for (const [k, v] of processedEvents.entries()) {
@@ -35,9 +33,6 @@ const isEventProcessed = (referenceId) => {
   return false;
 };
 
-/**
- * Unified notification orchestrator
- */
 export const notifyUser = async (user, eventType, data = {}) => {
   if (!user) return;
 
@@ -54,7 +49,6 @@ export const notifyUser = async (user, eventType, data = {}) => {
 
   const results = { email: null, sms: null };
 
-  // ── 1. Email Channel ─────────────────────────────────────────────────────
   const shouldSendEmail = Boolean(user.email);
   try {
     switch (eventType) {
@@ -162,7 +156,6 @@ export const notifyUser = async (user, eventType, data = {}) => {
     console.error(`Email dispatch error for ${eventType}:`, err.message);
   }
 
-  // ── 2. SMS Channel ───────────────────────────────────────────────────────
   const shouldSendSms = user.phone && user.isPhoneVerified;
   try {
     if (shouldSendSms) {

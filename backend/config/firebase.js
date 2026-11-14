@@ -13,7 +13,6 @@ let firebaseConfig = {
   privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
 };
 
-// Fallback to serviceAccountKey.json if env vars are incomplete
 if (!firebaseConfig.privateKey || !firebaseConfig.clientEmail) {
   const serviceAccountPath = path.resolve(__dirname, '../serviceAccountKey.json');
   if (fs.existsSync(serviceAccountPath)) {
@@ -33,7 +32,6 @@ if (!firebaseConfig.privateKey || !firebaseConfig.clientEmail) {
 let adminApp = null;
 let adminAuth = null;
 
-// Only initialize if credentials are available
 if (firebaseConfig.projectId && firebaseConfig.clientEmail && firebaseConfig.privateKey) {
   try {
     adminApp = getApps().length

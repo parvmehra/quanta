@@ -6,7 +6,7 @@ import './PhoneOnboardingModal.css';
 
 const PhoneOnboardingModal = () => {
   const { showPhonePrompt, dismissPhonePrompt, sendPhoneOtp, verifyPhoneOtp } = useAuth();
-  const [step, setStep] = useState('INPUT'); // 'INPUT' | 'VERIFY'
+  const [step, setStep] = useState('INPUT');
   const [phone, setPhone] = useState('+1');
   const [otp, setOtp] = useState('');
   const [devOtp, setDevOtp] = useState(null);

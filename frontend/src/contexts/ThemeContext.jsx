@@ -6,9 +6,8 @@ export const useTheme = () => useContext(ThemeContext);
 
 export const ThemeProvider = ({ children }) => {
   useEffect(() => {
-    // Quanta is designed as an exclusive dark fintech terminal
     document.documentElement.removeAttribute('data-theme');
-    localStorage.removeItem('stockpulse-theme');
+    localStorage.removeItem('quanta-theme');
   }, []);
 
   return (

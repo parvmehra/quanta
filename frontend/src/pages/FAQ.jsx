@@ -20,7 +20,6 @@ import { Link } from 'react-router-dom';
 import './FAQ.css';
 
 const FAQ_DATA = [
-  // ── CATEGORY A: Getting Started ──────────────────────────────────────────
   {
     id: 'a1',
     category: 'getting-started',
@@ -62,7 +61,6 @@ const FAQ_DATA = [
       'On the Sign In page (/login), click the "Forgot password?" link. Enter your registered email address to receive a secure, time-limited 6-digit recovery authorization code (valid for 30 minutes). Enter the recovery code alongside your new password to restore account access.',
   },
 
-  // ── CATEGORY B: Stock Analyzer ───────────────────────────────────────────
   {
     id: 'b1',
     category: 'stock-analyzer',
@@ -96,7 +94,6 @@ const FAQ_DATA = [
       'On stock cards and detail views, toggle between 1D (real-time intraday ticks), 1W (1 week), 1M (1 month), 3M (1 quarter), and 1Y (1 year). Green gradient area fills denote an upward trajectory, while red gradients indicate net downward momentum. Intraday 1D charts pulse with live socket updates.',
   },
 
-  // ── CATEGORY C: Trading Window & Order Concepts ──────────────────────────
   {
     id: 'c1',
     category: 'trading-orders',
@@ -130,7 +127,6 @@ const FAQ_DATA = [
       '• Order Value: Quantity multiplied by effective execution price.\n• Required Margin: The capital required to back the position, including estimated brokerage fees and regulatory charges.\n• Available Funds / Margin: Your trading wallet balance. If required margin exceeds available balance, the order is blocked with an insufficient margin alert.',
   },
 
-  // ── CATEGORY D: Portfolio & Broker Import ────────────────────────────────
   {
     id: 'd1',
     category: 'portfolio',
@@ -156,7 +152,6 @@ const FAQ_DATA = [
       '• Unrealized P&L: (Current Market Price - Average Purchase Price) × Quantity for active open holdings.\n• Realized P&L: Profit or loss permanently secured upon executing a SELL order in the trading terminal, with net proceeds credited to your wallet.',
   },
 
-  // ── CATEGORY E: Stock Subscriptions & Watchlists ─────────────────────────
   {
     id: 'e1',
     category: 'subscriptions',
@@ -174,7 +169,6 @@ const FAQ_DATA = [
       'On any stock detail page (/stock/:symbol), click the "Subscribe" button in the action header. To unsubscribe, click the button again or manage your active subscriptions list under your Account Profile (/profile).',
   },
 
-  // ── CATEGORY F: Wallet & Razorpay Deposits ───────────────────────────────
   {
     id: 'f1',
     category: 'wallet',
@@ -200,7 +194,6 @@ const FAQ_DATA = [
       'No. Quanta wallet funds represent paper-trading margin strictly for simulation and educational trading practice. Wallet balances hold no monetary cash value and cannot be withdrawn to external bank accounts.',
   },
 
-  // ── CATEGORY G: Account Security & Notifications ─────────────────────────
   {
     id: 'g1',
     category: 'security',
@@ -218,7 +211,6 @@ const FAQ_DATA = [
       'The Delivery Activity Log on your Profile page (/profile) records recent notification events, displaying the delivery channel (Email or SMS), title, recipient, timestamp, and status (Sent, Simulated, or Failed).',
   },
 
-  // ── CATEGORY H: Market Data & Risk ───────────────────────────────────────
   {
     id: 'h1',
     category: 'market-data',
@@ -258,7 +250,6 @@ const FAQ = () => {
     setExpandedId(prev => (prev === id ? null : id));
   };
 
-  // Filter FAQs based on search and category
   const filteredFaqs = useMemo(() => {
     return FAQ_DATA.filter((item) => {
       const matchesCategory =
@@ -278,7 +269,6 @@ const FAQ = () => {
   return (
     <div className="faq-page">
       <div className="faq-container animate-fade-in">
-        {/* Header Hero */}
         <div className="faq-hero">
           <div className="faq-badge">
             <BookOpen size={14} />
@@ -293,7 +283,6 @@ const FAQ = () => {
             Comprehensive guides on stock screening, order execution, paper margin, portfolio analytics, and automated alert notifications.
           </p>
 
-          {/* Search Box */}
           <div className="faq-search-wrapper">
             <Search size={18} className="faq-search-icon" />
             <input
@@ -316,7 +305,6 @@ const FAQ = () => {
           </div>
         </div>
 
-        {/* Category Filter Pills */}
         <div className="faq-categories">
           {CATEGORIES.map((cat) => (
             <button
@@ -330,7 +318,6 @@ const FAQ = () => {
           ))}
         </div>
 
-        {/* Results Counter */}
         <div className="faq-results-bar">
           <span className="faq-results-count">
             Showing <strong>{filteredFaqs.length}</strong> questions
@@ -338,7 +325,6 @@ const FAQ = () => {
           </span>
         </div>
 
-        {/* FAQ Accordion List */}
         {filteredFaqs.length === 0 ? (
           <div className="faq-empty-state">
             <HelpCircle size={40} className="faq-empty-icon" />
@@ -394,7 +380,6 @@ const FAQ = () => {
           </div>
         )}
 
-        {/* Quick Resource Cards */}
         <div className="faq-quick-cards">
           <div className="quick-card">
             <TrendingUp size={22} className="qc-icon" />

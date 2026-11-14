@@ -32,7 +32,6 @@
   border: 1px dashed var(--border-hover) !important;
 }
 
-/* Summary Cards */
 .portfolio-summary {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -88,7 +87,6 @@
   background: rgba(255,255,255,0.03);
 }
 
-/* Modal */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -173,7 +171,6 @@
   margin-top: 32px;
 }
 
-/* ===== IMPORT MODAL STYLES ===== */
 .import-body {
   padding: 24px;
 }
@@ -220,7 +217,6 @@
   margin-top: 2px;
 }
 
-/* File Drop Zone */
 .file-drop-zone {
   border: 2px dashed var(--border-hover);
   border-radius: var(--radius-lg);
@@ -301,7 +297,6 @@
   text-decoration: underline;
 }
 
-/* Import Messages */
 .import-message {
   display: flex;
   align-items: flex-start;
@@ -335,7 +330,6 @@
   margin-top: 2px;
 }
 
-/* Preview Table */
 .import-preview {
   margin-bottom: 24px;
 }
@@ -398,7 +392,6 @@
   color: var(--text-1) !important;
 }
 
-/* Empty Portfolio */
 .empty-portfolio {
   text-align: center;
   padding: 60px 20px;
@@ -425,7 +418,6 @@
   gap: 12px;
 }
 
-/* Holdings Table */
 .portfolio-holdings h2 {
   font-size: 1.5rem;
   margin-bottom: 24px;
@@ -518,7 +510,6 @@
   opacity: 0.8;
 }
 
-/* Actions */
 .actions {
   display: flex;
   justify-content: center;
@@ -546,7 +537,6 @@
   color: var(--red);
 }
 
-/* Loading & Error States */
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -575,7 +565,6 @@
   border-radius: var(--radius-lg);
 }
 
-/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -586,14 +575,13 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .portfolio-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 20px;
   }
-  
+
   .portfolio-actions-row {
     flex-direction: column;
     width: 100%;
@@ -603,7 +591,7 @@
     width: 100%;
     justify-content: center;
   }
-  
+
   .portfolio-summary {
     grid-template-columns: 1fr;
   }

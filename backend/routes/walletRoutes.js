@@ -6,7 +6,6 @@ import { notifyUser } from '../services/notificationService.js';
 
 const router = express.Router();
 
-// ── GET Wallet Details & History ───────────────────────────────────────────
 router.get('/', protect, (req, res) => {
   try {
     const user = store.users.find(u => u._id === req.user._id);
@@ -31,7 +30,6 @@ router.get('/', protect, (req, res) => {
   }
 });
 
-// ── POST Top-up Wallet ─────────────────────────────────────────────────────
 router.post('/topup', protect, async (req, res) => {
   const { amount, paymentMethod, paymentId } = req.body;
   const numAmount = Number(amount);
@@ -71,7 +69,6 @@ router.post('/topup', protect, async (req, res) => {
     store.walletTransactions.push(transaction);
     saveStore();
 
-    // Trigger Email & SMS notifications
     await notifyUser(user, 'WALLET_TOPUP', {
       amount: numAmount,
       newBalance,

@@ -12,16 +12,14 @@ const stockSchema = new mongoose.Schema({
   symbol: { type: String, required: true, unique: true, uppercase: true },
   name: { type: String },
   
-  // Quote Data
-  price: { type: Number },           // Current price (c)
-  open: { type: Number },            // Opening price (o)
-  high: { type: Number },            // High price (h)
-  low: { type: Number },             // Low price (l)
-  previousClose: { type: Number },   // Previous close (pc)
-  change: { type: Number },          // Change (d)
-  changePercent: { type: Number },   // Change percentage (dp)
+  price: { type: Number },
+  open: { type: Number },
+  high: { type: Number },
+  low: { type: Number },
+  previousClose: { type: Number },
+  change: { type: Number },
+  changePercent: { type: Number },
   
-  // Company Profile Data
   country: { type: String },
   currency: { type: String },
   exchange: { type: String },
@@ -32,7 +30,6 @@ const stockSchema = new mongoose.Schema({
   weburl: { type: String },
   logo: { type: String },
   
-  // News
   news: [newsSchema],
 }, { timestamps: true });
 

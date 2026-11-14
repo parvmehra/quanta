@@ -1,7 +1,3 @@
-// Schedule-based market status. This only knows regular weekday trading hours
-// in each exchange's own time zone (DST handled by Intl). It does NOT know
-// exchange holidays or early closes, so the UI labels it "scheduled hours".
-
 const EXCHANGES = [
   { id: 'US', label: 'NYSE / Nasdaq', timeZone: 'America/New_York', open: [9, 30], close: [16, 0] },
   { id: 'IN', label: 'NSE / BSE', timeZone: 'Asia/Kolkata', open: [9, 15], close: [15, 30] },

@@ -4,13 +4,11 @@ import { getGeminiAdvisorResponse } from '../services/geminiAdvisorService.js';
 import yahooFinancePkg from 'yahoo-finance2';
 const yahooFinance = typeof yahooFinancePkg === 'function' ? new yahooFinancePkg() : yahooFinancePkg;
 
-// Suppress validation errors that break search with older package versions
 try {
   yahooFinance.setGlobalConfig({
     validation: { logErrors: false },
   });
 } catch (e) {
-  // setGlobalConfig may not exist on all versions, ignore
   if (yahooFinance._opts) {
     yahooFinance._opts.validation = { logErrors: false };
   }
@@ -21,15 +19,12 @@ dotenv.config();
 const FINNHUB_KEY = process.env.FINNHUB_API_KEY || 'demo';
 const FINNHUB_BASE = 'https://finnhub.io/api/v1';
 
-// ─── API timeout configuration ──────────────────────────────────────
-const API_TIMEOUT_MS = 5000; // 5 seconds timeout for external API calls
+const API_TIMEOUT_MS = 5000;
 
-// Create axios instance with default timeout
 const axiosWithTimeout = axios.create({
   timeout: API_TIMEOUT_MS
 });
 
-// ─── In-memory cache ────────────────────────────────────────────────
 const cache = {
     search:  {},
     quote:   {},
@@ -37,8 +32,8 @@ const cache = {
     history: {},
     marketPulse: null,
 };
-const CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 hours
-const MARKET_PULSE_CACHE_DURATION = 5 * 60 * 1000; // 5
+const CACHE_DURATION = 2 * 60 * 60 * 1000;
+const MARKET_PULSE_CACHE_DURATION = 5 * 60 * 1000;
 
 export const clearCache = (_req, res) => {
     cache.search  = {};
@@ -58,9 +53,7 @@ const isIndianStock = (symbol) => {
     return s.endsWith('.NS') || s.endsWith('.BO');
 };
 
-// ─── Fallback stock list (used when API is rate-limited) ─────────────
 const FALLBACK_STOCKS = [
-    // US
     { symbol: 'AAPL',         description: 'Apple Inc.',                       type: 'Equity', exchange: 'NASDAQ' },
     { symbol: 'MSFT',         description: 'Microsoft Corporation',            type: 'Equity', exchange: 'NASDAQ' },
     { symbol: 'GOOGL',        description: 'Alphabet Inc.',                    type: 'Equity', exchange: 'NASDAQ' },
@@ -86,7 +79,6 @@ const FALLBACK_STOCKS = [
     { symbol: 'NKE',          description: 'Nike, Inc.',                       type: 'Equity', exchange: 'NYSE'   },
     { symbol: 'UBER',         description: 'Uber Technologies, Inc.',          type: 'Equity', exchange: 'NYSE'   },
     { symbol: 'SPOT',         description: 'Spotify Technology S.A.',          type: 'Equity', exchange: 'NYSE'   },
-    // NSE India
     { symbol: 'RELIANCE.NS',  description: 'Reliance Industries Limited',      type: 'Equity', exchange: 'NSE'    },
     { symbol: 'TCS.NS',       description: 'Tata Consultancy Services',        type: 'Equity', exchange: 'NSE'    },
     { symbol: 'TATASTEEL.NS', description: 'Tata Steel Limited',               type: 'Equity', exchange: 'NSE'    },
@@ -113,7 +105,6 @@ const FALLBACK_STOCKS = [
     { symbol: 'DMART.NS',     description: 'Avenue Supermarts Limited',        type: 'Equity', exchange: 'NSE'    },
 ];
 
-// ─── Mock stock data for fallback when APIs are unavailable ──────────
 const MOCK_QUOTES = {
     'AAPL': { symbol: 'AAPL', name: 'Apple Inc.', price: 185.50, change: 2.50, changePercent: 1.37, high: 187.30, low: 183.10, open: 184.20, previousClose: 183.00, volume: 42150000, marketCap: 2900000000000, sharesOutstanding: 15631000000 },
     'MSFT': { symbol: 'MSFT', name: 'Microsoft Corporation', price: 420.75, change: 5.25, changePercent: 1.26, high: 423.50, low: 417.80, open: 419.30, previousClose: 415.50, volume: 18920000, marketCap: 3140000000000, sharesOutstanding: 7470000000 },
@@ -127,7 +118,6 @@ const MOCK_QUOTES = {
     'INFY.NS': { symbol: 'INFY.NS', name: 'Infosys Limited', price: 1540.80, change: 12.50, changePercent: 0.82, high: 1560.30, low: 1525.10, open: 1538.60, previousClose: 1528.30, volume: 5640000, marketCap: 670000000000, sharesOutstanding: 435200000 },
 };
 
-// Generate mock data for any stock not in the predefined list
 const generateMockQuote = (symbol) => {
     const basePrice = Math.random() * 400 + 50;
     const changePercent = (Math.random() - 0.5) * 4;
@@ -151,10 +141,8 @@ const generateMockQuote = (symbol) => {
     };
 };
 
-// Helper: detect Finnhub rate-limit
 const isFinnhubRateLimit = (err) => err?.response?.status === 429;
 
-// ─── 1. Search stocks ────────────────────────────────────────────────
 export const searchStocks = async (req, res) => {
     const { q } = req.query;
     if (!q) return res.status(400).json({ message: 'Query parameter q is required' });
@@ -168,7 +156,6 @@ export const searchStocks = async (req, res) => {
     try {
         let results = [];
         
-        // Search Finnhub
         try {
             const fhRes = await axios.get(`${FINNHUB_BASE}/search`, {
                 params: { q, token: FINNHUB_KEY }
@@ -189,7 +176,6 @@ export const searchStocks = async (req, res) => {
             }
         }
 
-        // Search Yahoo Finance for all stock types with validation suppressed
         try {
             const yfRes = await yahooFinance.search(q, {}, { validateResult: false });
             if (yfRes && yfRes.quotes) {
@@ -203,7 +189,6 @@ export const searchStocks = async (req, res) => {
                         exchange: m.exchDisp || m.exchange
                     }));
                     
-                // Merge without duplicates
                 for (const yr of yfResults) {
                     if (!results.find(r => r.symbol === yr.symbol)) {
                         results.push(yr);
@@ -219,12 +204,10 @@ export const searchStocks = async (req, res) => {
                 s.symbol.toLowerCase().includes(qLower) ||
                 s.description.toLowerCase().includes(qLower)
             );
-            // Even for fallback, try to enrich with live data
             const enrichedFallback = await enrichResultsWithQuotes(filtered.slice(0, 8));
             return res.status(200).json(enrichedFallback);
         }
 
-        // Enrich search results with live price data from Yahoo Finance
         const enrichedResults = await enrichResultsWithQuotes(results);
 
         cache.search[qLower] = { data: enrichedResults, timestamp: Date.now() };
@@ -240,7 +223,6 @@ export const searchStocks = async (req, res) => {
     }
 };
 
-// ─── 2. Get current stock quote ──────────────────────────────────────
 export const getStockQuote = async (req, res) => {
     const { symbol } = req.params;
     const symLower = symbol.toLowerCase();
@@ -252,7 +234,6 @@ export const getStockQuote = async (req, res) => {
     try {
         let data;
         
-        // Try Yahoo Finance first
         try {
             const q = await yahooFinance.quote(symbol, {}, { validateResult: false });
             if (q && q.regularMarketPrice !== undefined) {
@@ -275,9 +256,7 @@ export const getStockQuote = async (req, res) => {
             console.warn(`Yahoo Finance quote failed for ${symbol}, trying Finnhub fallback:`, err.message);
         }
 
-        // Fallback to Finnhub if Yahoo Finance fails or returns no price data
         if (!data) {
-            // Finnhub
             const response = await axios.get(`${FINNHUB_BASE}/quote`, {
                 params: { symbol, token: FINNHUB_KEY }
             });
@@ -294,7 +273,6 @@ export const getStockQuote = async (req, res) => {
                 });
                 profile = profileRes.data || {};
             } catch (err) {
-                // Ignore profile error
             }
             
             data = {
@@ -307,7 +285,7 @@ export const getStockQuote = async (req, res) => {
                 low: q.l || 0,
                 open: q.o || 0,
                 previousClose: q.pc || 0,
-                volume: 0, // Finnhub quote does not provide volume
+                volume: 0,
                 marketCap: profile.marketCapitalization ? profile.marketCapitalization * 1000000 : null,
                 sharesOutstanding: profile.shareOutstanding ? profile.shareOutstanding * 1000000 : null,
             };
@@ -323,17 +301,14 @@ export const getStockQuote = async (req, res) => {
         
         console.error(`Quote error for ${symbol}:`, err.message);
         
-        // Fallback to mock data when APIs are unavailable
         console.warn(`⚠️ APIs unavailable, returning offline mock data for ${symbol}`);
         const mockData = MOCK_QUOTES[symbol.toUpperCase()] || generateMockQuote(symbol);
         cache.quote[symLower] = { data: mockData, timestamp: Date.now() };
         
-        // Return 200 with offline data instead of 500
         res.status(200).json(mockData);
     }
 };
 
-// ─── 3. Get recent news ──────────────────────────────────────────────
 export const getStockNews = async (req, res) => {
     const { symbol } = req.params;
     const symLower = symbol.toLowerCase();
@@ -345,14 +320,13 @@ export const getStockNews = async (req, res) => {
     try {
         let articles = [];
         
-        // Try Yahoo Finance first
         try {
             const yfRes = await yahooFinance.search(symbol, {}, { validateResult: false });
             if (yfRes && yfRes.news && yfRes.news.length > 0) {
                 articles = yfRes.news.slice(0, 5).map(article => ({
                     headline: article.title,
                     source: article.publisher || 'Yahoo Finance',
-                    summary: article.title, // YF search doesn't return full summary
+                    summary: article.title,
                     url: article.link,
                     banner_image: article.thumbnail?.resolutions?.[0]?.url || null,
                     datetime: article.providerPublishTime ? article.providerPublishTime * 1000 : Date.now(),
@@ -362,9 +336,7 @@ export const getStockNews = async (req, res) => {
             console.warn(`Yahoo Finance news failed for ${symbol}, trying Finnhub fallback:`, err.message);
         }
 
-        // Fallback to Finnhub if Yahoo Finance returned no news articles
         if (articles.length === 0) {
-            // Finnhub
             const toDate = new Date();
             const fromDate = new Date();
             fromDate.setDate(toDate.getDate() - 7);
@@ -397,7 +369,6 @@ export const getStockNews = async (req, res) => {
         
         console.error(`News error for ${symbol}:`, err.message);
         
-        // Return empty articles array as fallback (offline mode)
         const fallbackNews = [
             {
                 headline: 'Market Update: Live data unavailable',
@@ -415,7 +386,6 @@ export const getStockNews = async (req, res) => {
     }
 };
 
-// ─── 4. Get historical price data for charts ─────────────────────────
 export const getStockHistory = async (req, res) => {
     const { symbol } = req.params;
     const symLower = symbol.toLowerCase();
@@ -427,7 +397,6 @@ export const getStockHistory = async (req, res) => {
     try {
         let dataPoints = [];
         
-        // Try Yahoo Finance first
         try {
             const toDate = new Date();
             const fromDate = new Date();
@@ -470,11 +439,9 @@ export const getStockHistory = async (req, res) => {
             console.warn(`Yahoo Finance history failed for ${symbol}, trying Finnhub fallback:`, err.message);
         }
 
-        // Fallback to Finnhub if Yahoo Finance history returned nothing or failed
         if (dataPoints.length === 0) {
-            // Finnhub
             const toTime = Math.floor(Date.now() / 1000);
-            const fromTime = toTime - (100 * 24 * 60 * 60); // 100 days
+            const fromTime = toTime - (100 * 24 * 60 * 60);
             
             const response = await axios.get(`${FINNHUB_BASE}/stock/candle`, {
                 params: { symbol, resolution: 'D', from: fromTime, to: toTime, token: FINNHUB_KEY }
@@ -512,7 +479,6 @@ export const getStockHistory = async (req, res) => {
         
         console.error(`History error for ${symbol}:`, err.message);
         
-        // Calibrate realistic basePrice to prevent chart price scale distortion
         let basePrice = MOCK_QUOTES[symbol.toUpperCase()]?.price;
         if (!basePrice && cache.quote?.[symLower]?.data?.price) {
             basePrice = cache.quote[symLower].data.price;
@@ -538,13 +504,11 @@ export const getStockHistory = async (req, res) => {
             });
         }
         
-        // Cache mock history for only 30 seconds so real data can reload quickly
         cache.history[symLower] = { data: mockHistory, timestamp: Date.now() - (CACHE_DURATION - 30000) };
         res.status(200).json(mockHistory);
     }
 };
 
-// ─── 5. Market Pulse — live index data for dashboard ─────────────────
 const MARKET_INDICES = [
     { symbol: '^GSPC', name: 'S&P 500' },
     { symbol: '^IXIC', name: 'NASDAQ' },
@@ -554,13 +518,11 @@ const MARKET_INDICES = [
 const TOP_GAINER_WATCHLIST = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'NFLX', 'AMD', 'INTC'];
 
 export const getMarketPulse = async (_req, res) => {
-    // Return cached data if fresh
     if (cache.marketPulse && Date.now() - cache.marketPulse.timestamp < MARKET_PULSE_CACHE_DURATION) {
         return res.status(200).json(cache.marketPulse.data);
     }
 
     try {
-        // 1. Fetch index quotes
         const indices = [];
         for (const idx of MARKET_INDICES) {
             try {
@@ -586,7 +548,6 @@ export const getMarketPulse = async (_req, res) => {
             }
         }
 
-        // 2. Find top gainer from watchlist (batch fetch for efficiency)
         let topGainer = { symbol: 'N/A', changePercent: 0 };
         try {
             const gainers = await yahooFinance.quote(TOP_GAINER_WATCHLIST, {}, { validateResult: false });
@@ -601,15 +562,14 @@ export const getMarketPulse = async (_req, res) => {
             console.warn('Market Pulse: Top gainer fetch failed:', err.message);
         }
 
-        // 3. Determine market status (US markets: 9:30 AM - 4:00 PM ET, Mon-Fri)
         const now = new Date();
-        const etOffset = -4; // EDT (summer) — simplified
+        const etOffset = -4;
         const etHour = (now.getUTCHours() + etOffset + 24) % 24;
         const etMin = now.getUTCMinutes();
         const etTimeInMinutes = etHour * 60 + etMin;
         const day = now.getUTCDay();
         const isWeekday = day >= 1 && day <= 5;
-        const isMarketHours = etTimeInMinutes >= 570 && etTimeInMinutes <= 960; // 9:30 - 16:00
+        const isMarketHours = etTimeInMinutes >= 570 && etTimeInMinutes <= 960;
         const marketStatus = isWeekday && isMarketHours ? 'US Open' : 'US Closed';
 
         const data = {
@@ -625,7 +585,6 @@ export const getMarketPulse = async (_req, res) => {
         res.status(200).json(data);
     } catch (err) {
         console.error('Market Pulse error:', err.message);
-        // Return fallback static data
         res.status(200).json({
             indices: [
                 { symbol: '^GSPC', name: 'S&P 500', price: 0, change: 0, changePercent: 0, isPositive: true },
@@ -638,7 +597,6 @@ export const getMarketPulse = async (_req, res) => {
     }
 };
 
-// ─── Helper: Enrich search results with live quote data ──────────────
 const enrichResultsWithQuotes = async (results) => {
     if (!results || results.length === 0) return results;
 
@@ -680,11 +638,10 @@ const enrichResultsWithQuotes = async (results) => {
         });
     } catch (err) {
         console.warn('Failed to enrich search results with live quotes:', err.message);
-        return results; // Return unenriched results on failure
+        return results;
     }
 };
 
-// ─── 6. Get batch quotes for multiple symbols ────────────────────────
 export const getBatchQuotes = async (req, res) => {
     const { symbols } = req.query;
     if (!symbols) return res.status(400).json({ message: 'symbols query parameter is required (comma-separated)' });
@@ -724,8 +681,6 @@ export const getBatchQuotes = async (req, res) => {
     }
 };
 
-
-// ─── 7. Quanta AI Advisor ────────────────────────────────────────
 export const getStockAdvisorResponse = async (req, res) => {
     const { symbol, message, history, context } = req.body;
     if (!symbol) {
@@ -736,7 +691,6 @@ export const getStockAdvisorResponse = async (req, res) => {
         let enrichedContext = { ...(context || {}) };
         const symLower = symbol.toLowerCase();
         
-        // Enrich with cached quote data if available and missing in context
         if (!enrichedContext.price && cache.quote[symLower]?.data) {
             enrichedContext = { ...cache.quote[symLower].data, ...enrichedContext };
         }

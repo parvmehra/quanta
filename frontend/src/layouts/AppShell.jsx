@@ -13,7 +13,6 @@ import { ChangeValue, Skeleton } from '../components/ui/ui';
 import QuantaMark from '../components/QuantaMark';
 import './AppShell.css';
 
-// Only routes that exist today. New entries are added as each page is built.
 const NAV = [
   { group: 'Overview', items: [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, auth: true },
@@ -48,7 +47,6 @@ function IndexStrip() {
     const load = async () => {
       try {
         const res = await axios.get(`${API_BASE_URL}/api/stocks/market-pulse`, { timeout: 12000 });
-        // The API reports price 0 when a provider call failed: treat as unavailable, not as a price.
         const valid = (res.data?.indices || []).filter((i) => Number(i.price) > 0);
         if (!cancelled) setState({ status: valid.length ? 'ok' : 'unavailable', indices: valid });
       } catch {
@@ -125,7 +123,6 @@ export default function AppShell() {
 
   useEffect(() => { setDrawerOpen(false); setNotifOpen(false); setMenuOpen(false); }, [location.pathname]);
 
-  // "/" focuses search (unless typing in a field)
   useEffect(() => {
     const onKey = (e) => {
       const tag = e.target?.tagName;
@@ -140,7 +137,7 @@ export default function AppShell() {
 
   const toggleCollapsed = () => {
     setCollapsed((c) => {
-      try { localStorage.setItem(COLLAPSE_KEY, c ? '0' : '1'); } catch { /* storage unavailable */ }
+      try { localStorage.setItem(COLLAPSE_KEY, c ? '0' : '1'); } catch { }
       return !c;
     });
   };

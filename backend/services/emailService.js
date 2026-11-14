@@ -2,7 +2,6 @@ import nodemailer from 'nodemailer';
 import { store, saveStore } from '../dataStore.js';
 import crypto from 'crypto';
 
-// ── Transporter Configuration ──────────────────────────────────────────────
 let transporter = null;
 let isSimulated = false;
 
@@ -43,12 +42,10 @@ const initTransporter = async () => {
     }
   }
 
-  // Development simulation mode: instant, reliable, logged to console & persisted to user notifications
   isSimulated = true;
   console.log('📧 Nodemailer: Running in Simulated Mode (logs to console/dataStore, codes returned to UI)');
 };
 
-// Initialize immediately
 initTransporter();
 
 const getFromAddress = () => {
@@ -62,7 +59,6 @@ const getAppBaseUrl = () => {
   return process.env.APP_BASE_URL || 'http://localhost:5173';
 };
 
-// ── Email Templates Styling ────────────────────────────────────────────────
 const emailHeader = (title) => `
 <!DOCTYPE html>
 <html lang="en">
@@ -113,7 +109,6 @@ const emailFooter = `
 </html>
 `;
 
-// Helper to record notification in dataStore
 const logNotification = (userId, channel, eventType, recipient, title, message, status, referenceId = null) => {
   try {
     if (!store.notificationLogs) store.notificationLogs = [];
@@ -136,7 +131,6 @@ const logNotification = (userId, channel, eventType, recipient, title, message, 
   }
 };
 
-// ── Generic Send Function ──────────────────────────────────────────────────
 export const sendMail = async ({ to, subject, html, text, userId = null, eventType = 'GENERAL', referenceId = null }) => {
   try {
     if (!transporter) await initTransporter();
@@ -171,11 +165,6 @@ export const sendMail = async ({ to, subject, html, text, userId = null, eventTy
   }
 };
 
-// ── Specific Event Email Dispatchers ───────────────────────────────────────
-
-/**
- * 1. Account Email Verification
- */
 export const sendVerificationEmail = async ({ toEmail, name, token, userId }) => {
   const verifyLink = `${getAppBaseUrl()}/login?verifyToken=${encodeURIComponent(token)}&email=${encodeURIComponent(toEmail)}`;
   const subject = 'Verify your Quanta account';
@@ -204,9 +193,6 @@ export const sendVerificationEmail = async ({ toEmail, name, token, userId }) =>
   return sendMail({ to: toEmail, subject, html, text, userId, eventType: 'EMAIL_VERIFICATION' });
 };
 
-/**
- * 1.5 Login OTP Email (Passwordless Sign-In)
- */
 export const sendLoginOtpEmail = async ({ toEmail, name, otp, userId }) => {
   const subject = `Your Quanta One-Time Login Code: ${otp}`;
   const text = `Hi ${name || 'Trader'},\n\nYour one-time login verification code for Quanta is: ${otp}\n\nThis code is valid for 10 minutes. If you did not request this login code, you can safely ignore this email.\n\nBest regards,\nThe Quanta Team`;
@@ -230,9 +216,6 @@ export const sendLoginOtpEmail = async ({ toEmail, name, otp, userId }) => {
   return sendMail({ to: toEmail, subject, html, text, userId, eventType: 'LOGIN_OTP' });
 };
 
-/**
- * 2. Welcome Email After Successful Verification / First Sign-in
- */
 export const sendWelcomeEmail = async ({ toEmail, name, userId }) => {
   const dashboardLink = `${getAppBaseUrl()}/analyzer`;
   const tradeLink = `${getAppBaseUrl()}/trade/AAPL`;
@@ -425,9 +408,6 @@ ${getAppBaseUrl()}`;
   return sendMail({ to: toEmail, subject, html, text, userId, eventType: 'WELCOME' });
 };
 
-/**
- * 2.5 Signup Welcome Email — sent immediately on registration (before email verification)
- */
 export const sendSignupWelcomeEmail = async ({ toEmail, name, userId }) => {
   const verifyLink = `${getAppBaseUrl()}/login`;
   const subject = `Welcome to Quanta, ${name || 'Trader'}! Please verify your account`;
@@ -467,9 +447,6 @@ export const sendSignupWelcomeEmail = async ({ toEmail, name, userId }) => {
   return sendMail({ to: toEmail, subject, html, text, userId, eventType: 'SIGNUP_WELCOME' });
 };
 
-/**
- * 3. Login Alert Notification
- */
 export const sendLoginAlertEmail = async ({ toEmail, name, ip, userAgent, userId }) => {
   const subject = 'New sign-in to your Quanta account';
   const timeStr = new Date().toUTCString();
@@ -497,9 +474,6 @@ export const sendLoginAlertEmail = async ({ toEmail, name, ip, userAgent, userId
   return sendMail({ to: toEmail, subject, html, text, userId, eventType: 'LOGIN_ALERT' });
 };
 
-/**
- * 4. Stock Subscription Confirmation
- */
 export const sendStockSubscriptionEmail = async ({ toEmail, name, symbol, companyName, price, userId }) => {
   const stockUrl = `${getAppBaseUrl()}/stock/${encodeURIComponent(symbol)}`;
   const subject = `Subscription Confirmed: ${symbol} (${companyName || symbol})`;
@@ -532,9 +506,6 @@ export const sendStockSubscriptionEmail = async ({ toEmail, name, symbol, compan
   return sendMail({ to: toEmail, subject, html, text, userId, eventType: 'STOCK_SUBSCRIPTION' });
 };
 
-/**
- * 5. Stock Purchase / Trade Execution Confirmation
- */
 export const sendTradeConfirmationEmail = async ({ toEmail, name, tradeDetails, userId }) => {
   const { symbol, shares, price, total, type, referenceId } = tradeDetails;
   const isBuy = (type || 'BUY').toUpperCase() === 'BUY';
@@ -572,9 +543,6 @@ export const sendTradeConfirmationEmail = async ({ toEmail, name, tradeDetails, 
   return sendMail({ to: toEmail, subject, html, text, userId, eventType: 'STOCK_PURCHASE', referenceId });
 };
 
-/**
- * 6. Wallet Top-up & Payment Confirmation
- */
 export const sendWalletTopupEmail = async ({ toEmail, name, amount, newBalance, referenceId, method, userId }) => {
   const subject = `Wallet Credited: +$${Number(amount).toFixed(2)}`;
   const text = `Hi ${name},\n\nYour Quanta trading wallet has been successfully topped up with $${amount}. New Balance: $${newBalance}. Reference ID: ${referenceId}.\n\nBest regards,\nThe Quanta Team`;
@@ -605,9 +573,6 @@ export const sendWalletTopupEmail = async ({ toEmail, name, amount, newBalance, 
   return sendMail({ to: toEmail, subject, html, text, userId, eventType: 'WALLET_TOPUP', referenceId });
 };
 
-/**
- * 7. Password Reset Email
- */
 export const sendPasswordResetEmail = async ({ toEmail, name, resetToken, userId }) => {
   const resetLink = `${getAppBaseUrl()}/login?resetToken=${encodeURIComponent(resetToken)}&email=${encodeURIComponent(toEmail)}`;
   const subject = 'Reset your Quanta password';

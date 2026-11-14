@@ -40,7 +40,7 @@ const StockDetails = () => {
   const [wsConnected, setWsConnected] = useState(false);
   const [isSubscribedToAlerts, setIsSubscribedToAlerts] = useState(() => {
     const userId = localStorage.getItem('userId') || 'guest';
-    const saved = localStorage.getItem(`stockpulse-subscriptions-${userId}`);
+    const saved = localStorage.getItem(`quanta-subscriptions-${userId}`);
     if (saved) {
       try {
         const subs = JSON.parse(saved);
@@ -54,11 +54,9 @@ const StockDetails = () => {
   const [chartError, setChartError] = useState(null);
   const [newsError, setNewsError] = useState(null);
 
-  // Initial HTTP fetch for quote + news + history (all independent, so one failing won't block others)
   const fetchInitialData = async () => {
     setLoading(true);
 
-    // 1. Quote (critical — if this fails, show error page)
     try {
       const quoteRes = await axios.get(`${API_BASE_URL}/api/stocks/quote/${symbol}`);
       setStockData(quoteRes.data);
@@ -72,7 +70,6 @@ const StockDetails = () => {
       setLoading(false);
     }
 
-    // 2. News (non-critical)
     try {
       const newsRes = await axios.get(`${API_BASE_URL}/api/stocks/news/${symbol}`);
       setStockNews(newsRes.data);
@@ -83,7 +80,6 @@ const StockDetails = () => {
       setStockNews([]);
     }
 
-    // 3. Chart history (non-critical)
     try {
       const historyRes = await axios.get(`${API_BASE_URL}/api/stocks/history/${symbol}`);
       setStockHistory(historyRes.data);
@@ -95,13 +91,11 @@ const StockDetails = () => {
     }
   };
 
-  // WebSocket connection for live price updates
   useEffect(() => {
     if (!symbol) return;
 
     fetchInitialData();
 
-    // Connect to socket.io
     const socket = io(SOCKET_URL);
     socketRef.current = socket;
 
@@ -115,12 +109,10 @@ const StockDetails = () => {
       console.log(`[WebSocket] Live Update for ${data.symbol}: $${data.price}`);
       setIsUpdating(true);
       setStockData((prev) => {
-        // Trigger notification if subscribed and price changed
         if (isSubscribedToAlerts && prev && prev.price !== data.price) {
-            // Check if we already notified recently to prevent spam
             const lastNotifKey = `lastNotif_${symbol}`;
             const lastNotifTime = sessionStorage.getItem(lastNotifKey);
-            if (!lastNotifTime || Date.now() - parseInt(lastNotifTime) > 60000) { // Max 1 per minute per stock
+            if (!lastNotifTime || Date.now() - parseInt(lastNotifTime) > 60000) {
                 addNotification(`Price Alert: ${data.symbol}`, `The price is now $${data.price.toFixed(2)}`, 'info');
                 sessionStorage.setItem(lastNotifKey, Date.now().toString());
                 
@@ -153,7 +145,7 @@ const StockDetails = () => {
       setIsSubscribedToAlerts(newStatus);
       
       const userId = localStorage.getItem('userId') || 'guest';
-      const key = `stockpulse-subscriptions-${userId}`;
+      const key = `quanta-subscriptions-${userId}`;
       let subs = [];
       try {
           const saved = localStorage.getItem(key);
@@ -224,12 +216,10 @@ const StockDetails = () => {
 
   return (
     <div className="sd-page">
-      {/* Background ambient glow */}
       <div className={`sd-ambient-glow ${isPositive ? 'glow-green' : 'glow-red'}`}></div>
 
       <div className="sd-container">
         
-        {/* === TOP BAR === */}
         <div className="sd-topbar">
           <Link to="/analyzer" className="sd-back-link">
             <ArrowLeft size={18} />
@@ -258,7 +248,6 @@ const StockDetails = () => {
           </div>
         </div>
 
-        {/* === HERO HEADER === */}
         <div className="sd-hero">
           <div className="sd-hero-left">
             <div className="sd-symbol-badge">{stockData.symbol}</div>
@@ -286,7 +275,6 @@ const StockDetails = () => {
           </div>
         </div>
 
-        {/* === TAB NAVIGATION === */}
         <div className="sd-tabs">
           {tabs.map((tab) => (
             <button
@@ -301,12 +289,10 @@ const StockDetails = () => {
           ))}
         </div>
 
-        {/* === CONTENT === */}
         <div className="sd-content">
           {activeTab === 'overview' && (
             <div className="sd-overview">
               
-              {/* Chart */}
               <div className="sd-chart-card">
                 <div className="sd-chart-header">
                   <h3><BarChart3 size={18} /> Price History</h3>
@@ -361,7 +347,6 @@ const StockDetails = () => {
                 )}
               </div>
 
-              {/* Key Statistics */}
               <div className="sd-stats-section">
                 <h3 className="sd-section-title">Key Statistics</h3>
                 <div className="sd-stats-grid">

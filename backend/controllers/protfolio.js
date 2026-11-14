@@ -1,8 +1,6 @@
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 
-// --- In-Memory Database Simulation ---
-// In a real application, you would use a database like MongoDB or PostgreSQL.
 let portfolio = [
   {
     id: '1',
@@ -27,20 +25,11 @@ let portfolio = [
   },
 ];
 
-// The frontend now handles live prices via WebSocket.
 
-// --- Controller Functions ---
 
-/**
- * @desc    Get all portfolio items with live data
- * @route   GET /api/portfolio
- * @access  Public
- */
 const getPortfolio = async (req, res) => {
   try {
     const portfolioWithFallbackData = portfolio.map((item) => {
-      // Return avgPrice as the initial currentPrice so the frontend has something to show
-      // before the WebSocket live prices arrive.
       const currentPrice = item.avgPrice; 
       const totalValue = item.shares * currentPrice;
       const gainLoss = totalValue - item.shares * item.avgPrice;
@@ -60,11 +49,6 @@ const getPortfolio = async (req, res) => {
   }
 };
 
-/**
- * @desc    Get a single portfolio item by ID
- * @route   GET /api/portfolio/:id
- * @access  Public
- */
 const getPortfolioItem = (req, res) => {
     const item = portfolio.find((p) => p.id === req.params.id);
     if (item) {
@@ -75,11 +59,6 @@ const getPortfolioItem = (req, res) => {
 }
 
 
-/**
- * @desc    Add a new stock to the portfolio
- * @route   POST /api/portfolio
- * @access  Public
- */
 const addStock = (req, res) => {
   const { symbol, shares, avgPrice } = req.body;
 
@@ -87,11 +66,10 @@ const addStock = (req, res) => {
     return res.status(400).json({ message: 'Please provide symbol, shares, and average price' });
   }
 
-  // A real app would fetch the company name from an API
   const newItem = {
     id: uuidv4(),
     symbol: symbol.toUpperCase(),
-    name: `${symbol.toUpperCase()} Inc.`, // Placeholder name
+    name: `${symbol.toUpperCase()} Inc.`,
     shares: parseFloat(shares),
     avgPrice: parseFloat(avgPrice),
   };
@@ -100,11 +78,6 @@ const addStock = (req, res) => {
   res.status(201).json(newItem);
 };
 
-/**
- * @desc    Update an existing stock in the portfolio
- * @route   PUT /api/portfolio/:id
- * @access  Public
- */
 const updateStock = (req, res) => {
   const { id } = req.params;
   const { shares, avgPrice } = req.body;
@@ -115,7 +88,6 @@ const updateStock = (req, res) => {
     return res.status(404).json({ message: 'Portfolio item not found' });
   }
   
-  // Update fields if they are provided
   if (shares !== undefined) {
       portfolio[itemIndex].shares = parseFloat(shares);
   }
@@ -127,11 +99,6 @@ const updateStock = (req, res) => {
 };
 
 
-/**
- * @desc    Delete a stock from the portfolio
- * @route   DELETE /api/portfolio/:id
- * @access  Public
- */
 const deleteStock = (req, res) => {
   const { id } = req.params;
   const initialLength = portfolio.length;

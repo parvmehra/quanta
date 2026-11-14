@@ -29,29 +29,25 @@ const Profile = () => {
   const { user, setUser, updatePreferences, sendPhoneOtp, verifyPhoneOtp } = useAuth();
   const { addNotification } = useNotification();
 
-  // Notification Preferences State
   const [prefs, setPrefs] = useState({
     email: { security: true, subscriptions: true, trades: true, wallet: true, market: false },
     sms: { security: true, subscriptions: false, trades: true, wallet: true, market: false },
   });
   const [savingPrefs, setSavingPrefs] = useState(false);
 
-  // Phone Verification Modal State
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneOtp, setPhoneOtp] = useState('');
   const [devOtp, setDevOtp] = useState(null);
-  const [otpStep, setOtpStep] = useState('SEND'); // 'SEND' | 'VERIFY'
+  const [otpStep, setOtpStep] = useState('SEND');
   const [otpLoading, setOtpLoading] = useState(false);
   const [, setResendCooldown] = useState(0);
 
-  // Wallet Top-Up Modal State
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [topupAmount, setTopupAmount] = useState('5000');
   const [topupLoading, setTopupLoading] = useState(false);
   const [walletBalance, setWalletBalance] = useState(500000);
 
-  // Subscriptions & Logs State
   const [subscriptions, setSubscriptions] = useState([]);
   const [notificationLogs, setNotificationLogs] = useState([]);
   const [, setLoadingData] = useState(true);
@@ -69,17 +65,14 @@ const Profile = () => {
   const fetchProfileData = async () => {
     setLoadingData(true);
     try {
-      // 1. Fetch wallet & transactions
       const walletRes = await axiosInstance.get('/api/wallet');
       if (walletRes.data?.wallet) {
         setWalletBalance(walletRes.data.wallet.balance);
       }
 
-      // 2. Fetch stock subscriptions
       const subsRes = await axiosInstance.get('/api/stocks/subscriptions');
       setSubscriptions(subsRes.data || []);
 
-      // 3. Fetch notification history
       const logsRes = await axiosInstance.get('/api/auth/notifications/history');
       setNotificationLogs(logsRes.data || []);
     } catch (err) {
@@ -112,7 +105,6 @@ const Profile = () => {
     }
   };
 
-  // Phone Verification Flow
   const handleSendPhoneOtp = async (e) => {
     e.preventDefault();
     if (!phoneNumber || !phoneNumber.startsWith('+')) {
@@ -169,7 +161,6 @@ const Profile = () => {
     }
   };
 
-  // Wallet Top-Up Flow
   const handleTopupSubmit = async (e) => {
     e.preventDefault();
     const amount = Number(topupAmount);
@@ -209,7 +200,6 @@ const Profile = () => {
   return (
     <div className="profile-page">
       <div className="profile-container animate-fade-in">
-        {/* Header */}
         <div className="profile-header">
           <div className="profile-header-left">
             <div className="profile-avatar-wrap">
@@ -228,11 +218,8 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* 2-Column Dashboard Bento */}
         <div className="profile-grid">
-          {/* LEFT COLUMN: Identity & Notification Preferences */}
           <div className="profile-col-left">
-            {/* Identity & Verification Card */}
             <div className="profile-card">
               <h2 className="profile-card-title">
                 <Shield size={18} className="profile-icon-green" /> Security & Identity
@@ -277,7 +264,6 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Notification Preferences Centre */}
             <div className="profile-card">
               <div className="pref-card-header">
                 <div>
@@ -299,7 +285,6 @@ const Profile = () => {
                 </button>
               </div>
 
-              {/* Preferences Table */}
               <div className="pref-table">
                 <div className="pref-table-header">
                   <span>Notification Event</span>
@@ -307,7 +292,6 @@ const Profile = () => {
                   <span className="text-center">SMS</span>
                 </div>
 
-                {/* Row 1: Security Alerts */}
                 <div className="pref-table-row">
                   <div className="pref-row-desc">
                     <strong>Account & Security Alerts</strong>
@@ -334,7 +318,6 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* Row 2: Stock Subscriptions */}
                 <div className="pref-table-row">
                   <div className="pref-row-desc">
                     <strong>Stock Subscription Alerts</strong>
@@ -361,7 +344,6 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* Row 3: Trade Confirmations */}
                 <div className="pref-table-row">
                   <div className="pref-row-desc">
                     <strong>Trade Executions</strong>
@@ -388,7 +370,6 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* Row 4: Wallet & Deposits */}
                 <div className="pref-table-row">
                   <div className="pref-row-desc">
                     <strong>Wallet & Razorpay Payments</strong>
@@ -418,9 +399,7 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Wallet, Subscriptions, and Notification Logs */}
           <div className="profile-col-right">
-            {/* Wallet & Margin Card */}
             <div className="profile-card profile-wallet-card">
               <div className="wallet-card-header">
                 <div>
@@ -455,7 +434,6 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Active Subscriptions Card */}
             <div className="profile-card">
               <h2 className="profile-card-title">
                 <TrendingUp size={18} className="profile-icon-green" /> Active Stock Subscriptions
@@ -495,7 +473,6 @@ const Profile = () => {
               )}
             </div>
 
-            {/* Notification Delivery History Log */}
             <div className="profile-card">
               <h2 className="profile-card-title">
                 <History size={18} className="profile-icon-green" /> Delivery Activity Log
@@ -530,7 +507,6 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Phone Verification Modal */}
       {showPhoneModal && (
         <div className="profile-modal-overlay">
           <div className="profile-modal-card">
@@ -591,7 +567,6 @@ const Profile = () => {
         </div>
       )}
 
-      {/* Wallet Deposit Modal */}
       {showWalletModal && (
         <div className="profile-modal-overlay">
           <div className="profile-modal-card">

@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 
-/**
- * GET a JSON endpoint with loading / error state, abort on unmount and optional polling.
- * Keeps the last good data when a refresh fails so the UI never blanks out.
- */
 export function useFetch(url, { interval = 0, enabled = true } = {}) {
   const [state, setState] = useState({ data: null, error: null, loading: Boolean(url && enabled), updatedAt: null });
   const aliveRef = useRef(true);

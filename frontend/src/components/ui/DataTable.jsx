@@ -7,16 +7,12 @@ const cmp = (a, b) => {
   const an = a === null || a === undefined || Number.isNaN(a);
   const bn = b === null || b === undefined || Number.isNaN(b);
   if (an && bn) return 0;
-  if (an) return 1;   // missing values always sort last
+  if (an) return 1;
   if (bn) return -1;
   if (typeof a === 'string' || typeof b === 'string') return String(a).localeCompare(String(b));
   return a - b;
 };
 
-/**
- * columns: [{ key, label, align?: 'right', sortable?, sortValue?(row), render?(row), hideBelow?: 'sm'|'md' }]
- * Missing values sort last in either direction.
- */
 export default function DataTable({ columns, rows, rowKey, defaultSort, loading = false, skeletonRows = 6, empty = 'No data', caption, dense = false }) {
   const [sort, setSort] = useState(defaultSort || null);
 

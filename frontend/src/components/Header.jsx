@@ -55,7 +55,6 @@ const Header = () => {
     }
   };
 
-  // Base navigation links visible to everyone
   const baseLinks = [
     { to: '/', label: 'Home' },
     { to: '/markets', label: 'Markets' },
@@ -63,7 +62,6 @@ const Header = () => {
     { to: '/about', label: 'About' },
   ];
 
-  // Links visible only after login
   const navLinks = isAuthenticated
     ? [
         { to: '/', label: 'Home' },
@@ -78,7 +76,6 @@ const Header = () => {
   return (
     <header className={`header${isScrolled ? ' scrolled' : ''}`} role="banner">
       <div className="header-container">
-        {/* Logo */}
         <Link to="/" className="logo" aria-label="Quanta home">
           <div className="logo-icon">
             <QuantaMark size={20} />
@@ -86,7 +83,6 @@ const Header = () => {
           Quanta
         </Link>
 
-        {/* Desktop Navigation */}
         <nav className="desktop-nav" aria-label="Main navigation">
           {navLinks.map(({ to, label }) => (
             <Link
@@ -99,7 +95,6 @@ const Header = () => {
           ))}
         </nav>
 
-        {/* Search Bar */}
         <div className="nav-search-wrapper">
           <span className="nav-search-icon">
             <Search size={14} />
@@ -115,9 +110,7 @@ const Header = () => {
           />
         </div>
 
-        {/* Header Actions */}
         <div className="header-actions">
-          {/* Notification Bell */}
           <div className="notification-wrapper" ref={notifRef}>
             <button
               className="icon-btn"
@@ -159,7 +152,6 @@ const Header = () => {
             )}
           </div>
 
-          {/* User Avatar / Auth Actions */}
           {isAuthenticated ? (
             <div className="user-action-group">
               <Link to="/profile" className="icon-btn user-avatar-btn" title="Profile & Settings" aria-label="Profile">
@@ -175,7 +167,6 @@ const Header = () => {
             </Link>
           )}
 
-          {/* Mobile Toggle */}
           <button
             className="mobile-menu-btn"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -187,7 +178,6 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Mobile Drawer */}
       <div className={`mobile-nav${mobileMenuOpen ? ' open' : ''}`} aria-hidden={!mobileMenuOpen}>
         {navLinks.map(({ to, label }) => (
           <Link key={to} to={to} className="mobile-nav-link">{label}</Link>

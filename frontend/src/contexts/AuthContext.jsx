@@ -10,7 +10,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [showPhonePrompt, setShowPhonePrompt] = useState(false);
 
-  // Check current session
   const checkAuth = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -28,7 +27,6 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('userId', res.data.user.id);
         localStorage.setItem('isAuthenticated', 'true');
 
-        // Check if phone onboarding needed
         if (!res.data.user.isPhoneVerified && !res.data.user.phonePromptDismissed) {
           setShowPhonePrompt(true);
         }
@@ -53,7 +51,6 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('authChange', handleAuthChange);
   }, []);
 
-  // Standard Login
   const login = async (email, password) => {
     const res = await axiosInstance.post('/api/auth/login', { email, password });
     if (res.data.token) {
@@ -67,7 +64,6 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
-  // Verify Login 2FA OTP
   const verifyLoginOtp = async (email, otp) => {
     const res = await axiosInstance.post('/api/auth/verify-login-otp', { email, otp });
     if (res.data.token) {
@@ -81,19 +77,16 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
-  // Resend Login OTP
   const resendLoginOtp = async (email) => {
     const res = await axiosInstance.post('/api/auth/resend-login-otp', { email });
     return res.data;
   };
 
-  // Standard Registration
   const signup = async (name, email, password) => {
     const res = await axiosInstance.post('/api/auth/signup', { name, email, password });
     return res.data;
   };
 
-  // Verify Email Code
   const verifyEmail = async (email, token) => {
     const res = await axiosInstance.post('/api/auth/verify-email', { email, token });
     if (res.data.token) {
@@ -107,13 +100,11 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
-  // Resend Email Verification
   const resendVerification = async (email) => {
     const res = await axiosInstance.post('/api/auth/resend-verification', { email });
     return res.data;
   };
 
-  // Google OAuth Login
   const googleLogin = async (googleUser) => {
     const res = await axiosInstance.post('/api/auth/google', googleUser);
     if (res.data.token) {
@@ -131,13 +122,11 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
-  // Send Phone OTP
   const sendPhoneOtp = async (phone) => {
     const res = await axiosInstance.post('/api/auth/phone/send-otp', { phone });
     return res.data;
   };
 
-  // Verify Phone OTP
   const verifyPhoneOtp = async (otp) => {
     const res = await axiosInstance.post('/api/auth/phone/verify-otp', { otp });
     if (res.data.user) {
@@ -147,7 +136,6 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
-  // Dismiss Phone Onboarding Prompt
   const dismissPhonePrompt = async () => {
     setShowPhonePrompt(false);
     try {
@@ -160,7 +148,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Update Notification Preferences
   const updatePreferences = async (preferences) => {
     const res = await axiosInstance.put('/api/auth/preferences', { preferences });
     if (res.data.preferences && user) {
@@ -169,7 +156,6 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
-  // Logout
   const logout = async () => {
     try {
       await axiosInstance.post('/api/auth/logout');

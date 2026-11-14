@@ -7,7 +7,6 @@ const Footer = () => {
     <footer className="footer">
       <div className="container">
         <div className="footer-content">
-          {/* Logo & description */}
           <div className="footer-section footer-brand">
             <div className="footer-logo">
               <Activity className="footer-logo-icon" />
@@ -19,7 +18,6 @@ const Footer = () => {
             </p>
           </div>
 
-          {/* Quick Links */}
           <div className="footer-section">
             <h4>Product</h4>
             <ul className="footer-links">
@@ -30,7 +28,6 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Features */}
           <div className="footer-section">
             <h4>Features</h4>
             <ul className="footer-links">
@@ -41,7 +38,6 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Social Links */}
           <div className="footer-section">
             <h4>Connect</h4>
             <div className="social-links">
@@ -58,7 +54,6 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom */}
         <div className="footer-bottom">
           <p>&copy; 2025 Quanta. All rights reserved.</p>
         </div>

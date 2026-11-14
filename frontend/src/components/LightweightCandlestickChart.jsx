@@ -9,15 +9,6 @@ import {
   LineSeries 
 } from 'lightweight-charts';
 
-/**
- * Professional Candlestick Chart using TradingView's Lightweight Charts.
- * Supports candle data, volume, SMA, Bollinger Bands, and RSI sub-chart.
- * 
- * Optimized for real-time updates:
- * - Initializes chart canvas once to prevent canvas context exhaustion and disappearing graphs
- * - Updates data in-place via series.setData without re-creating DOM or chart instances
- * - Strictly sanitizes and deduplicates timestamps so lightweight-charts never throws
- */
 const LightweightCandlestickChart = ({
   data = [],
   showSMA = true,
@@ -32,7 +23,6 @@ const LightweightCandlestickChart = ({
   const chartRef = useRef(null);
   const rsiChartRef = useRef(null);
 
-  // Series refs
   const candleSeriesRef = useRef(null);
   const volumeSeriesRef = useRef(null);
   const smaSeriesRef = useRef(null);
@@ -43,17 +33,14 @@ const LightweightCandlestickChart = ({
   const rsiOversoldRef = useRef(null);
   const priceLineRef = useRef(null);
 
-  // Tracking state
   const prevSymbolRef = useRef(symbol);
   const hasFittedRef = useRef(false);
 
-  // Convert and sanitize data for lightweight-charts
   const convertData = useCallback((rawData) => {
     if (!rawData || !Array.isArray(rawData) || rawData.length === 0) {
       return { candles: [], volumes: [], sma: [], bbUpper: [], bbLower: [], rsi: [] };
     }
 
-    // 1. Parse dates to numeric unix timestamps (seconds)
     const parsed = rawData
       .map((d, idx) => {
         let time;
@@ -89,15 +76,12 @@ const LightweightCandlestickChart = ({
       })
       .filter(d => typeof d.time === 'number' && !isNaN(d.time));
 
-    // 2. Sort chronologically
     parsed.sort((a, b) => a.time - b.time);
 
-    // 3. Deduplicate and ensure STRICTLY ascending time
     const strictlyAscending = [];
     let lastTime = -Infinity;
     for (const d of parsed) {
       if (d.time === lastTime) {
-        // Overwrite earlier entry with more updated entry
         strictlyAscending[strictlyAscending.length - 1] = d;
       } else if (d.time > lastTime) {
         strictlyAscending.push(d);
@@ -140,7 +124,6 @@ const LightweightCandlestickChart = ({
     return { candles, volumes, sma, bbUpper, bbLower, rsi };
   }, []);
 
-  // 1. Initialize Main Chart ONCE on mount
   useEffect(() => {
     if (!mainChartContainerRef.current) return;
 
@@ -195,7 +178,6 @@ const LightweightCandlestickChart = ({
 
     chartRef.current = chart;
 
-    // Create Candlestick series
     const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#10b981',
       downColor: '#ef4444',
@@ -207,7 +189,6 @@ const LightweightCandlestickChart = ({
     });
     candleSeriesRef.current = candleSeries;
 
-    // Create Volume histogram series
     const volumeSeries = chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' },
       priceScaleId: 'volume',
@@ -218,7 +199,6 @@ const LightweightCandlestickChart = ({
     });
     volumeSeriesRef.current = volumeSeries;
 
-    // Responsive Resize Observer
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
@@ -254,7 +234,6 @@ const LightweightCandlestickChart = ({
     };
   }, []);
 
-  // 2. Handle Symbol changes - reset fitting flag
   useEffect(() => {
     if (symbol !== prevSymbolRef.current) {
       prevSymbolRef.current = symbol;
@@ -262,7 +241,6 @@ const LightweightCandlestickChart = ({
     }
   }, [symbol]);
 
-  // 3. Update Chart Series Data in place
   useEffect(() => {
     if (!chartRef.current || !candleSeriesRef.current) return;
 
@@ -270,15 +248,12 @@ const LightweightCandlestickChart = ({
 
     if (candles.length === 0) return;
 
-    // Update Candles
     candleSeriesRef.current.setData(candles);
 
-    // Update Volumes
     if (volumeSeriesRef.current) {
       volumeSeriesRef.current.setData(volumes);
     }
 
-    // Update Price Line on last close
     const lastCandle = candles[candles.length - 1];
     if (priceLineRef.current) {
       try {
@@ -297,12 +272,10 @@ const LightweightCandlestickChart = ({
       });
     }
 
-    // Update SMA series if active
     if (smaSeriesRef.current) {
       smaSeriesRef.current.setData(sma);
     }
 
-    // Update Bollinger series if active
     if (bbUpperSeriesRef.current) {
       bbUpperSeriesRef.current.setData(bbUpper);
     }
@@ -310,7 +283,6 @@ const LightweightCandlestickChart = ({
       bbLowerSeriesRef.current.setData(bbLower);
     }
 
-    // Update RSI series if active
     if (rsiSeriesRef.current) {
       rsiSeriesRef.current.setData(rsi);
       if (rsiOverboughtRef.current) {
@@ -321,7 +293,6 @@ const LightweightCandlestickChart = ({
       }
     }
 
-    // Fit content once when new stock data loads
     if (!hasFittedRef.current && candles.length > 0) {
       chartRef.current.timeScale().fitContent();
       if (rsiChartRef.current) {
@@ -331,7 +302,6 @@ const LightweightCandlestickChart = ({
     }
   }, [data, convertData]);
 
-  // 4. Handle SMA Toggle
   useEffect(() => {
     if (!chartRef.current) return;
 
@@ -359,7 +329,6 @@ const LightweightCandlestickChart = ({
     }
   }, [showSMA, data, convertData]);
 
-  // 5. Handle Bollinger Bands Toggle
   useEffect(() => {
     if (!chartRef.current) return;
 
@@ -403,7 +372,6 @@ const LightweightCandlestickChart = ({
     }
   }, [showBollinger, data, convertData]);
 
-  // 6. Handle RSI Sub-Chart Toggle & Sizing
   useEffect(() => {
     if (!rsiContainerRef.current) return;
 
@@ -475,13 +443,11 @@ const LightweightCandlestickChart = ({
         });
         rsiOversoldRef.current = oversold;
 
-        // Set fixed range [0, 100] for RSI
         rsiChart.priceScale('right').applyOptions({
           autoScale: false,
           scaleMargins: { top: 0.05, bottom: 0.05 },
         });
 
-        // Sync visible logical range between charts
         if (chartRef.current) {
           chartRef.current.timeScale().subscribeVisibleLogicalRangeChange((range) => {
             if (range && rsiChartRef.current) {
@@ -530,7 +496,6 @@ const LightweightCandlestickChart = ({
         position: 'relative',
       }}
     >
-      {/* Main Candlestick Chart */}
       <div
         ref={mainChartContainerRef}
         style={{
@@ -541,7 +506,6 @@ const LightweightCandlestickChart = ({
         }}
       />
 
-      {/* RSI Sub-Chart Container */}
       <div
         ref={rsiContainerRef}
         style={{

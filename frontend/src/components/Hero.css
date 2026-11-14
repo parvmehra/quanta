@@ -1,9 +1,5 @@
-/* ============================================
-   Hero — Dark Fintech Homepage Hero & Live Terminal
-   ============================================ */
-
 .hero {
-  padding-top: 56px; /* fixed header height */
+  padding-top: 56px;
   background: var(--bg-body);
   position: relative;
   overflow: hidden;
@@ -15,7 +11,6 @@
   padding: 0 24px;
 }
 
-/* === TWO-COLUMN LAYOUT === */
 .hero-body {
   display: grid;
   grid-template-columns: 1fr 1.08fr;
@@ -25,9 +20,6 @@
   padding: 24px 0 16px;
 }
 
-/* ===========================
-   LEFT — HERO CONTENT
-   =========================== */
 .hero-content {
   padding-right: 24px;
   padding-top: 14px;
@@ -74,7 +66,6 @@
   margin-bottom: 48px;
 }
 
-/* Primary CTA — Soft Sage / Mint Green as in Screenshot */
 .btn-hero-primary {
   background: #6EB790;
   color: #0F1412;
@@ -101,7 +92,6 @@
   transform: translateY(0);
 }
 
-/* Secondary CTA — Dark Elevated Pill */
 .btn-hero-secondary {
   background: var(--bg-card);
   color: var(--text-1);
@@ -123,7 +113,6 @@
   color: #FFFFFF;
 }
 
-/* === STATS ROW === */
 .hero-stats {
   display: flex;
   align-items: center;
@@ -152,9 +141,6 @@
   font-weight: 400;
 }
 
-/* ===========================
-   RIGHT — STOCK CARD
-   =========================== */
 .hero-visual {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -171,7 +157,6 @@
   border-color: var(--border-hover);
 }
 
-/* Quick Stock Watchlist Strip */
 .hv-stocks-bar {
   display: flex;
   align-items: center;
@@ -253,7 +238,6 @@
   font-weight: 600;
 }
 
-/* Card Header */
 .hv-header {
   display: flex;
   align-items: center;
@@ -336,7 +320,6 @@
   display: block;
 }
 
-/* Time range tabs */
 .hv-time-tabs {
   display: flex;
   align-items: center;
@@ -370,7 +353,6 @@
   border: 1px solid var(--border);
 }
 
-/* Price Section */
 .hv-price-section {
   padding: 12px 20px 4px;
   display: flex;
@@ -414,7 +396,6 @@
   to { transform: rotate(360deg); }
 }
 
-/* Candlestick Chart Area */
 .hv-chart-area {
   padding: 0 24px 6px;
   position: relative;
@@ -432,13 +413,11 @@
   overflow: visible;
 }
 
-/* Candlestick animation on hover */
 .candle-group {
   transition: opacity 0.15s ease;
   cursor: pointer;
 }
 
-/* Y axis labels */
 .hv-y-labels {
   position: absolute;
   right: 0;
@@ -458,7 +437,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* X axis labels */
 .hv-x-labels {
   display: flex;
   justify-content: space-between;
@@ -471,7 +449,6 @@
   color: var(--text-3);
 }
 
-/* Hover Tooltip */
 .hv-tooltip {
   position: absolute;
   top: 8px;
@@ -517,7 +494,6 @@
   font-weight: 600;
 }
 
-/* Bottom Metrics Grid */
 .hv-metrics {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -551,9 +527,6 @@
   display: block;
 }
 
-/* ===========================
-   FEATURE CARDS (4-Column Grid below hero)
-   =========================== */
 .hero-features {
   border-top: 1px solid var(--border);
   background: var(--bg-body);
@@ -640,7 +613,6 @@
   color: var(--text-1);
 }
 
-/* === RESPONSIVE === */
 @media (max-width: 1100px) {
   .hero-body {
     grid-template-columns: 1fr;

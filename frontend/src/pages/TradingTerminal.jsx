@@ -17,13 +17,11 @@ import toast from 'react-hot-toast';
 import { formatCurrencyValue, formatCompactCurrency, getCurrencyCode } from '../utils/currency';
 import './TradingTerminal.css';
 
-// Formatter utilities
 const formatLargeNumber = (num, symbol = '', exchange = '') => {
   if (num === null || num === undefined || isNaN(num)) return 'N/A';
   return formatCompactCurrency(num, symbol, exchange);
 };
 
-// Recharts Custom Candlestick Tooltip
 const ChartTooltip = ({ active, payload, currencyCode = 'USD' }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
@@ -77,12 +75,10 @@ const TradingTerminal = () => {
   const symbol = (routeSymbol || 'AAPL').toUpperCase();
   const navigate = useNavigate();
 
-  // --- AI Advisor & Order Interaction states ---
   const [isAiOpen, setIsAiOpen] = useState(true);
   const [highlightedOrder, setHighlightedOrder] = useState(null);
   const orderPanelRef = useRef(null);
 
-  // --- Trade Window Stock Search states ---
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -90,7 +86,6 @@ const TradingTerminal = () => {
   const searchContainerRef = useRef(null);
   const socketRef = useRef(null);
 
-  // --- Quote & News states ---
   const [stockData, setStockData] = useState(null);
   const [stockHistory, setStockHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,9 +94,8 @@ const TradingTerminal = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [recentTrades, setRecentTrades] = useState([]);
 
-  // --- Watchlist ---
   const [isInWatchlist, setIsInWatchlist] = useState(() => {
-    const saved = localStorage.getItem('stockpulse-watchlist');
+    const saved = localStorage.getItem('quanta-watchlist');
     if (saved) {
       try {
         return JSON.parse(saved).includes(symbol?.toUpperCase());
@@ -110,41 +104,34 @@ const TradingTerminal = () => {
     return false;
   });
 
-  // --- Chart Controls ---
   const [timeframe, setTimeframe] = useState('ALL');
   const [showSMA, setShowSMA] = useState(true);
   const [showBollinger, setShowBollinger] = useState(false);
   const [showRSI, setShowRSI] = useState(false);
 
-  // --- Form Controls ---
-  const [isBuy, setIsBuy] = useState(true); // true = BUY, false = SELL
-  const [productType, setProductType] = useState('MIS'); // MIS (Intraday), CNC (Delivery)
-  const [orderType, setOrderType] = useState('LIMIT'); // MARKET, LIMIT, SL (Stop Loss)
+  const [isBuy, setIsBuy] = useState(true);
+  const [productType, setProductType] = useState('MIS');
+  const [orderType, setOrderType] = useState('LIMIT');
   
   const [quantity, setQuantity] = useState(1);
   const [price, setPrice] = useState(0);
   const [triggerPrice, setTriggerPrice] = useState(0);
   
-  // Bracket Orders
   const [hasTarget, setHasTarget] = useState(false);
   const [targetPrice, setTargetPrice] = useState(0);
   const [hasStopLoss, setHasStopLoss] = useState(false);
   const [stopLossPrice, setStopLossPrice] = useState(0);
 
-  // --- Portfolio & Balance ---
   const [portfolioItems, setPortfolioItems] = useState([]);
   const [walletBalance, setWalletBalance] = useState(() => {
-    const saved = localStorage.getItem('stockpulse-wallet');
+    const saved = localStorage.getItem('quanta-wallet');
     return saved ? parseFloat(saved) : 50000.00;
   });
 
-  // --- Modal states ---
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  // --- Market Depth (Order Book) Mock states ---
   const [marketDepth, setMarketDepth] = useState({ bids: [], asks: [], buyPressure: 50 });
 
-  // Initial Quote + History fetch
   const fetchStockQuote = async () => {
     try {
       setLoading(true);
@@ -181,7 +168,6 @@ const TradingTerminal = () => {
     }
   };
 
-  // Socket setup
   useEffect(() => {
     if (!symbol) return;
     fetchStockQuote();
@@ -216,7 +202,6 @@ const TradingTerminal = () => {
     };
   }, [symbol]);
 
-  // Debounced search for instant stock switcher in Trade header
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -239,7 +224,6 @@ const TradingTerminal = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Click outside listener to dismiss search dropdown
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
@@ -250,14 +234,12 @@ const TradingTerminal = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Adjust input price when order type switches to market
   useEffect(() => {
     if (orderType === 'MARKET' && stockData) {
       setPrice(stockData.price);
     }
   }, [orderType, stockData]);
 
-  // Generate fluctuating mock market depth centered around current price
   useEffect(() => {
     if (!stockData?.price) return;
 
@@ -282,7 +264,6 @@ const TradingTerminal = () => {
         totalAskQty += askQty;
       }
 
-      // Sort bids descending, asks ascending
       bids.sort((a, b) => b.price - a.price);
       asks.sort((a, b) => a.price - b.price);
 
@@ -292,13 +273,12 @@ const TradingTerminal = () => {
     };
 
     generateDepth();
-    const timer = setInterval(generateDepth, 3500); // refresh depth every 3.5s
+    const timer = setInterval(generateDepth, 3500);
     return () => clearInterval(timer);
   }, [stockData?.price]);
 
-  // Watchlist handlers
   const handleWatchlistToggle = () => {
-    const saved = localStorage.getItem('stockpulse-watchlist');
+    const saved = localStorage.getItem('quanta-watchlist');
     let items = [];
     try {
       if (saved) items = JSON.parse(saved);
@@ -314,30 +294,26 @@ const TradingTerminal = () => {
       items = items.filter(i => i !== symbol.toUpperCase());
       toast.success(`${symbol.toUpperCase()} removed from Watchlist`);
     }
-    localStorage.setItem('stockpulse-watchlist', JSON.stringify(items));
+    localStorage.setItem('quanta-watchlist', JSON.stringify(items));
   };
 
-  // Calculations for technical indicators
   const getProcessedChartData = () => {
     if (!stockHistory || stockHistory.length === 0) return [];
 
     let raw = [...stockHistory];
 
-    // Filter by timeframe
     if (timeframe === '1D') raw = raw.slice(-5);
     else if (timeframe === '1W') raw = raw.slice(-10);
     else if (timeframe === '1M') raw = raw.slice(-20);
     else if (timeframe === '3M') raw = raw.slice(-45);
     else if (timeframe === '1Y') raw = raw.slice(-85);
 
-    // Formulate candles and calculate indicator fields
     const withIndicators = raw.map((d, index, arr) => {
       const open = d.open || d.price * 0.99;
       const close = d.price;
       const high = d.high || Math.max(open, close) * 1.01;
       const low = d.low || Math.min(open, close) * 0.99;
 
-      // 1. Calculate Simple Moving Average (SMA - 15)
       let sma = undefined;
       const smaPeriod = 15;
       if (index >= smaPeriod - 1) {
@@ -346,7 +322,6 @@ const TradingTerminal = () => {
         sma = sum / smaPeriod;
       }
 
-      // 2. Calculate Bollinger Bands (20 periods, 2 stddev)
       let bbUpper = undefined;
       let bbLower = undefined;
       let bbMiddle = undefined;
@@ -362,8 +337,7 @@ const TradingTerminal = () => {
         bbLower = mean - 2 * stdDev;
       }
 
-      // 3. Calculate Relative Strength Index (RSI - 14)
-      let rsi = 50; // default middle
+      let rsi = 50;
       const rsiPeriod = 14;
       if (index >= rsiPeriod) {
         let gains = 0;
@@ -400,7 +374,6 @@ const TradingTerminal = () => {
       };
     });
 
-    // Update or append current forming live candle to end if websocket has updated data
     if (stockData && withIndicators.length > 0 && typeof stockData.price === 'number') {
       const last = withIndicators[withIndicators.length - 1];
       const todayStr = new Date().toISOString().split('T')[0];
@@ -449,7 +422,6 @@ const TradingTerminal = () => {
     return getProcessedChartData();
   }, [stockHistory, timeframe, stockData?.price, stockData?.high, stockData?.low, stockData?.volume]);
 
-  // Price statistics
   const getVWAP = () => {
     if (!stockData) return 0;
     const h = stockData.high || stockData.price;
@@ -462,27 +434,20 @@ const TradingTerminal = () => {
   const lowerCircuit = stockData ? parseFloat((stockData.previousClose * 0.9).toFixed(2)) : 0;
   const upperCircuit = stockData ? parseFloat((stockData.previousClose * 1.1).toFixed(2)) : 0;
 
-  // Investment Calculations
   const finalPrice = orderType === 'MARKET' ? (stockData?.price || 0) : price;
   const orderValue = quantity * finalPrice;
   
-  // Charges: Brokerage is 0.05% capped at $20 for Intraday (MIS), $0 for Delivery (CNC)
   const brokerage = productType === 'MIS' ? Math.min(orderValue * 0.0005, 20.00) : 0;
-  // Taxes and Exchange charges are 0.03%
   const taxesAndTolls = orderValue * 0.0003;
   const totalCharges = brokerage + taxesAndTolls;
   const totalCost = orderValue + totalCharges;
 
-  // Wallet Margins
-  // MIS leverages 5x, so required margin is 20% of order value. CNC is 100%.
   const marginMultiplier = productType === 'MIS' ? 0.20 : 1.00;
   const requiredMargin = orderValue * marginMultiplier + totalCharges;
   const remainingFunds = walletBalance - requiredMargin;
 
-  // Calculate used margin based on existing portfolio holdings
   const usedMargin = portfolioItems.reduce((acc, curr) => acc + (curr.shares * curr.avgPrice * 0.20), 0);
 
-  // Risk / Reward Ratio
   const getRiskRewardRatio = () => {
     if (!hasTarget || !hasStopLoss || !stockData?.price) return 'N/A';
     const current = stockData.price;
@@ -494,7 +459,6 @@ const TradingTerminal = () => {
 
   const riskReward = getRiskRewardRatio();
 
-  // Dynamic AI suggestions based on Technical Analysis
   const getAISuggestion = () => {
     if (processedData.length === 0) return { action: 'Analyzing...', desc: 'Reading price feed and historical trends.' };
     
@@ -524,7 +488,6 @@ const TradingTerminal = () => {
 
   const aiSuggestion = getAISuggestion();
 
-  // Math helper actions for quantity/price
   const stepQuantity = (amt) => {
     setQuantity(prev => Math.max(1, prev + amt));
   };
@@ -533,7 +496,6 @@ const TradingTerminal = () => {
     setPrice(prev => parseFloat(Math.max(0.01, prev + amt).toFixed(2)));
   };
 
-  // Form submit handler
   const handlePlaceOrderClick = (e) => {
     e.preventDefault();
     if (quantity <= 0) {
@@ -556,7 +518,6 @@ const TradingTerminal = () => {
     setShowConfirmModal(true);
   };
 
-  // Confirm order execution
   const executeOrder = async () => {
     setShowConfirmModal(false);
     
@@ -565,7 +526,6 @@ const TradingTerminal = () => {
       const payloadQty = Number(quantity);
 
       if (isBuy) {
-        // --- Place Buy Order ---
         await axios.post(`${API_BASE_URL}/api/protfolio`, {
           symbol: symbol.toUpperCase(),
           shares: payloadQty,
@@ -574,12 +534,10 @@ const TradingTerminal = () => {
           currentPrice: stockData?.price || payloadPrice
         }, { withCredentials: true });
 
-        // Update Wallet Balance
         const newBalance = walletBalance - requiredMargin;
         setWalletBalance(newBalance);
-        localStorage.setItem('stockpulse-wallet', newBalance.toString());
+        localStorage.setItem('quanta-wallet', newBalance.toString());
 
-        // Update trades feed
         const newTrade = {
           time: new Date().toLocaleTimeString(),
           type: 'BUY',
@@ -590,8 +548,6 @@ const TradingTerminal = () => {
 
         toast.success(`Buy order executed: ${payloadQty} shares of ${symbol.toUpperCase()} at $${payloadPrice}`);
       } else {
-        // --- Place Sell Order ---
-        // Verify holding exists
         const symbolHoldings = portfolioItems.filter(item => item.symbol.toUpperCase() === symbol.toUpperCase());
         const totalOwned = symbolHoldings.reduce((sum, h) => sum + h.shares, 0);
 
@@ -621,14 +577,11 @@ const TradingTerminal = () => {
           }
         }
 
-        // Add proceeds to Wallet (returns required margin back + sells amount)
-        // Here we add orderValue - totalCharges to wallet
         const proceeds = orderValue - totalCharges;
         const newBalance = walletBalance + proceeds;
         setWalletBalance(newBalance);
-        localStorage.setItem('stockpulse-wallet', newBalance.toString());
+        localStorage.setItem('quanta-wallet', newBalance.toString());
 
-        // Update trades feed
         const newTrade = {
           time: new Date().toLocaleTimeString(),
           type: 'SELL',
@@ -640,7 +593,6 @@ const TradingTerminal = () => {
         toast.success(`Sell order executed: ${payloadQty} shares of ${symbol.toUpperCase()} at $${payloadPrice}`);
       }
 
-      // Re-fetch portfolio
       fetchPortfolio();
 
     } catch (err) {
@@ -690,20 +642,15 @@ const TradingTerminal = () => {
 
   return (
     <div className="tt-page">
-      {/* Background ambient glow matching price movements */}
       <div className={`tt-ambient-glow ${isBuy ? 'buy-glow' : 'sell-glow'}`}></div>
 
       <div className="tt-container animate-fade-in">
         
-        {/* ==========================================
-           1. STOCK HEADER
-           ========================================== */}
         <div className="tt-header tt-glass-card">
           <div className="tt-header-left">
             <Link to={`/stock/${symbol}`} className="tt-back-btn" title="Back to Details">
               <ArrowLeft size={18} />
             </Link>
-            {/* Instant Stock Search & Switcher */}
             <div className="tt-search-container" ref={searchContainerRef}>
               <div className="tt-search-input-wrap">
                 <Search size={13} className="tt-search-icon" />
@@ -822,18 +769,13 @@ const TradingTerminal = () => {
 
         <div className={`tt-workspace-split ${!isAiOpen ? 'full-width' : ''}`}>
           <div className="tt-workspace-main">
-            {/* ==========================================
-               2. MAIN CONTAINER GRID
-               ========================================== */}
             <div className="tt-main-grid">
           
-          {/* LEFT SECTION - CHART */}
           <div className="tt-chart-card tt-glass-card">
             <div className="tt-chart-toolbar">
               <div className="tt-chart-left-tools">
                 <span className="tt-chart-title">Candlestick & Indicator Dashboard</span>
                 
-                {/* Timeframes */}
                 <div className="tt-tf-group">
                   {['1D', '1W', '1M', '3M', '1Y', 'ALL'].map(tf => (
                     <button 
@@ -847,7 +789,6 @@ const TradingTerminal = () => {
                 </div>
               </div>
 
-              {/* Indicators */}
               <div className="tt-indicators-group">
                 <button 
                   className={`tt-indicator-toggle ${showSMA ? 'active' : ''}`}
@@ -873,7 +814,6 @@ const TradingTerminal = () => {
               </div>
             </div>
 
-            {/* Professional TradingView-style Candlestick Chart */}
             <div className="tt-chart-wrapper">
               <LightweightCandlestickChart
                 data={processedData}
@@ -887,9 +827,7 @@ const TradingTerminal = () => {
             </div>
           </div>
 
-          {/* RIGHT SECTION - TRADING PANEL */}
           <div ref={orderPanelRef} className={`tt-trading-panel tt-glass-card ${highlightedOrder ? `tt-highlight-${highlightedOrder}` : ''}`}>
-            {/* BUY / SELL Tabs */}
             <div className="tt-panel-toggle">
               <button 
                 className={`tt-toggle-tab buy-tab ${isBuy ? 'active' : ''}`}
@@ -905,7 +843,6 @@ const TradingTerminal = () => {
               </button>
             </div>
 
-            {/* Product Type (MIS vs CNC) */}
             <div className="tt-input-field-wrap">
               <label className="tt-input-label">Product Type</label>
               <div className="tt-selector-row">
@@ -924,7 +861,6 @@ const TradingTerminal = () => {
               </div>
             </div>
 
-            {/* Order Type */}
             <div className="tt-input-field-wrap">
               <label className="tt-input-label">Order Type</label>
               <div className="tt-selector-row">
@@ -940,7 +876,6 @@ const TradingTerminal = () => {
               </div>
             </div>
 
-            {/* Quantity and Price Row */}
             <div className="tt-form-row two-col">
               <div className="tt-input-field-wrap">
                 <label className="tt-input-label">Qty</label>
@@ -977,7 +912,6 @@ const TradingTerminal = () => {
               </div>
             </div>
 
-            {/* Trigger Price - Stop Loss order type only */}
             {orderType === 'SL' && (
               <div className="tt-input-field-wrap">
                 <label className="tt-input-label">Trigger Price</label>
@@ -995,7 +929,6 @@ const TradingTerminal = () => {
               </div>
             )}
 
-            {/* Target and Stop Loss check fields */}
             <div className="tt-form-row two-col">
               <div className="tt-input-field-wrap">
                 <div className="tt-bracket-check-row">
@@ -1053,7 +986,6 @@ const TradingTerminal = () => {
               </div>
             )}
 
-            {/* Wallet Info */}
             <div className="tt-wallet-card">
               <div className="tt-wallet-row">
                 <span>Available Margin</span>
@@ -1073,7 +1005,6 @@ const TradingTerminal = () => {
               </div>
             </div>
 
-            {/* Summary details */}
             <div className="tt-summary-card">
               <div className="tt-summary-title">Order Value Summary</div>
               <div className="tt-summary-row">
@@ -1094,7 +1025,6 @@ const TradingTerminal = () => {
               </div>
             </div>
 
-            {/* Action buttons */}
             <div className="tt-action-row">
               <button 
                 type="submit" 
@@ -1115,11 +1045,7 @@ const TradingTerminal = () => {
           </div>
         </div>
 
-        {/* ==========================================
-           3. BOTTOM SECTION: DEPTH, STATS, METRICS
-           ========================================== */}
         <div className="tt-bottom-grid">
-          {/* Order Book / Market Depth */}
           <div className="tt-depth-card tt-glass-card">
             <div className="tt-section-header">
               <Layers size={14} />
@@ -1127,7 +1053,6 @@ const TradingTerminal = () => {
             </div>
             
             <div className="tt-depth-grid">
-              {/* Bids */}
               <div>
                 <div className="tt-depth-side-header">
                   <span>Qty</span>
@@ -1146,7 +1071,6 @@ const TradingTerminal = () => {
 
               <div className="tt-depth-divider"></div>
 
-              {/* Asks */}
               <div>
                 <div className="tt-depth-side-header">
                   <span>Ask Price</span>
@@ -1164,7 +1088,6 @@ const TradingTerminal = () => {
               </div>
             </div>
 
-            {/* Pressure bar */}
             <div>
               <div className="tt-sentiment-labels">
                 <span className="positive">BUYERS {marketDepth.buyPressure}%</span>
@@ -1177,7 +1100,6 @@ const TradingTerminal = () => {
             </div>
           </div>
 
-          {/* LTP & Price Statistics */}
           <div className="tt-stats-card tt-glass-card">
             <div className="tt-section-header">
               <Activity size={14} />
@@ -1214,7 +1136,6 @@ const TradingTerminal = () => {
             </div>
           </div>
 
-          {/* Quick Metrics Cards */}
           <div className="tt-stats-card tt-glass-card">
             <div className="tt-section-header">
               <Layers size={14} />
@@ -1254,11 +1175,7 @@ const TradingTerminal = () => {
           </div>
         </div>
 
-        {/* ==========================================
-           4. ADVANCED ROW: SENTIMENT, AI, SESSION TRADES
-           ========================================== */}
         <div className="tt-advanced-row">
-          {/* Sentiment Meter */}
           <div className="tt-stats-card tt-glass-card tt-sentiment-meter-wrap">
             <div className="tt-section-header">
               <Activity size={14} />
@@ -1280,7 +1197,6 @@ const TradingTerminal = () => {
             </p>
           </div>
 
-          {/* AI Advisor widget */}
           <div className="tt-stats-card tt-glass-card">
             <div className="tt-section-header">
               <Cpu size={14} />
@@ -1324,7 +1240,6 @@ const TradingTerminal = () => {
             </div>
           </div>
 
-          {/* Recent trades in session */}
           <div className="tt-stats-card tt-glass-card">
             <div className="tt-section-header">
               <Layers size={14} />
@@ -1348,16 +1263,12 @@ const TradingTerminal = () => {
           </div>
         </div>
 
-        {/* Warning segment */}
         <p className="tt-warning-text">
           <ShieldAlert size={12} style={{ display: 'inline-block', marginRight: '4px', verticalAlign: 'middle', color: 'var(--yellow)' }} />
           <strong>Risk Warning:</strong> Trading in financial markets carries high risk. Margins provide high leverage which can multiply both profits and losses. Stock market investments are subject to market risks, read all scheme related documents carefully before investing.
         </p>
           </div>
 
-          {/* ==========================================
-             RIGHT SECTION: INTEGRATED QUANTA AI
-             ========================================== */}
           {isAiOpen && (
             <div className="tt-workspace-ai-side">
               <QuantaAdvisor
@@ -1404,9 +1315,6 @@ const TradingTerminal = () => {
 
       </div>
 
-      {/* ==========================================
-         5. ORDER CONFIRMATION MODAL
-         ========================================== */}
       {showConfirmModal && (
         <div className="tt-modal-overlay">
           <div className="tt-modal-box">
@@ -1455,7 +1363,6 @@ const TradingTerminal = () => {
                 </div>
               </div>
 
-              {/* Bracket indicators */}
               {(hasTarget || hasStopLoss) && (
                 <div className="tt-wallet-card" style={{ fontSize: '0.75rem' }}>
                   <div className="tt-summary-title">Bracket Targets</div>

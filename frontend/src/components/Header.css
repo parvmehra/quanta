@@ -1,7 +1,3 @@
-/* ============================================
-   Header — Quanta Dark Nav
-   ============================================ */
-
 .header {
   position: fixed;
   top: 0;
@@ -27,7 +23,6 @@
   gap: 0;
 }
 
-/* === LOGO === */
 .logo {
   display: flex;
   align-items: center;
@@ -48,7 +43,6 @@
   color: var(--green);
 }
 
-/* === DESKTOP NAV === */
 .desktop-nav {
   display: none;
   align-items: center;
@@ -75,7 +69,6 @@
   font-weight: 600;
 }
 
-/* Underline for active nav item */
 .nav-link.active::after {
   content: '';
   position: absolute;
@@ -87,7 +80,6 @@
   border-radius: 2px 2px 0 0;
 }
 
-/* === SEARCH BAR === */
 .nav-search-wrapper {
   display: none;
   position: relative;
@@ -129,7 +121,6 @@
   outline: none;
 }
 
-/* === HEADER ACTIONS === */
 .header-actions {
   display: flex;
   align-items: center;
@@ -172,7 +163,6 @@
   gap: 4px;
 }
 
-/* === NOTIFICATIONS === */
 .notification-wrapper {
   position: relative;
 }
@@ -300,7 +290,6 @@
   margin-top: 4px;
 }
 
-/* === AUTH BUTTONS === */
 .login-btn  { display: none; }
 .signup-btn { display: none; }
 
@@ -321,7 +310,6 @@
   background: var(--bg-hover);
 }
 
-/* === MOBILE NAV === */
 .mobile-nav {
   position: fixed;
   top: 64px;
@@ -376,7 +364,6 @@
 
 .full-width { width: 100%; }
 
-/* === RESPONSIVE === */
 @media (min-width: 960px) {
   .desktop-nav { display: flex; }
   .nav-search-wrapper { display: flex; }

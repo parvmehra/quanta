@@ -4,15 +4,14 @@ const portfolioSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     symbol: { type: String, required: true, uppercase: true },
-    name: { type: String, default: "" }, // optional: company name
+    name: { type: String, default: "" },
     shares: { type: Number, required: true },
     avgPrice: { type: Number, required: true },
-    currentPrice: { type: Number, default: 0 }, // optional: fetched from API
+    currentPrice: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
 
-// Virtuals for total value & gain/loss
 portfolioSchema.virtual("totalValue").get(function() {
   return this.shares * this.currentPrice;
 });

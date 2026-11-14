@@ -53,7 +53,6 @@ function App() {
             <PhoneOnboardingModal />
             <Suspense fallback={<Loading />}>
             <Routes>
-              {/* Landing + authentication: top-navigation layout */}
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<Home />} />
                 <Route path="/about" element={<About />} />
@@ -61,7 +60,6 @@ function App() {
                 <Route path="/signup" element={<Signup />} />
               </Route>
 
-              {/* Application: sidebar shell */}
               <Route element={<AppShell />}>
                 <Route path="/dashboard" element={guard(<Dashboard />)} />
                 <Route path="/markets" element={<MarketOverview />} />

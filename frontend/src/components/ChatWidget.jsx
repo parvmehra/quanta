@@ -19,7 +19,6 @@ const ChatWidget = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is logged in
     const checkAuth = async () => {
       const isAuth = localStorage.getItem('isAuthenticated') === 'true';
       if (isAuth) {
@@ -51,14 +50,12 @@ const ChatWidget = () => {
 
   useEffect(() => {
     socket.on('receive_message', (message) => {
-      // If we are admin, refresh room list if it's a new room
       if (user?.role === 'admin') {
         fetchAdminRooms();
         if (activeRoom === message.roomId) {
           setMessages(prev => [...prev, message]);
         }
       } else {
-        // Normal user
         if (activeRoom === message.roomId) {
           setMessages(prev => [...prev, message]);
         }

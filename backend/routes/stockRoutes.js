@@ -16,9 +16,6 @@ router.get('/market-pulse', getMarketPulse);
 router.post('/advisor', getStockAdvisorResponse);
 router.post('/cache/clear', clearCache);
 
-// ── Stock Subscriptions Endpoints ──────────────────────────────────────────
-
-// GET User's Subscribed Stocks
 router.get('/subscriptions', protect, (req, res) => {
   try {
     if (!store.subscriptions) store.subscriptions = [];
@@ -29,7 +26,6 @@ router.get('/subscriptions', protect, (req, res) => {
   }
 });
 
-// POST Subscribe to Stock Alerts
 router.post('/subscriptions', protect, async (req, res) => {
   const { symbol, companyName, price } = req.body;
 
@@ -41,7 +37,6 @@ router.post('/subscriptions', protect, async (req, res) => {
     if (!store.subscriptions) store.subscriptions = [];
     const symUpper = symbol.trim().toUpperCase();
 
-    // Check if already subscribed
     let existing = store.subscriptions.find(s => s.userId === req.user._id && s.symbol === symUpper);
     if (existing) {
       return res.json({ message: `Already subscribed to ${symUpper}`, subscription: existing });
@@ -59,7 +54,6 @@ router.post('/subscriptions', protect, async (req, res) => {
     store.subscriptions.push(newSub);
     saveStore();
 
-    // Trigger Email & SMS notification to the user
     const fullUser = store.users.find(u => u._id === req.user._id);
     if (fullUser) {
       notifyUser(fullUser, 'STOCK_SUBSCRIPTION', {
@@ -79,7 +73,6 @@ router.post('/subscriptions', protect, async (req, res) => {
   }
 });
 
-// DELETE Unsubscribe from Stock Alerts
 router.delete('/subscriptions/:symbol', protect, (req, res) => {
   const symUpper = req.params.symbol.trim().toUpperCase();
 

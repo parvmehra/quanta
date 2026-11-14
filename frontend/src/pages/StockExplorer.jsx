@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import axiosInstance from '../utils/axiosInstance';
@@ -8,7 +8,6 @@ import { Badge, ChangeValue, ErrorState, Tabs } from '../components/ui/ui';
 import { displaySymbol, exchangeLabel, formatMarketCap, formatPrice, formatTime, formatVolume, getCurrencyCode } from '../utils/format';
 import '../styles/workspace.css';
 
-// Shown when there is no search query. Real symbols, live quotes - not a ranking.
 const POPULAR = [
   'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'META', 'TSLA', 'JPM',
   'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'ICICIBANK.NS', 'SBIN.NS', 'TMPV.NS', 'ITC.NS',
@@ -37,22 +36,23 @@ export default function StockExplorer() {
   const [params, setParams] = useSearchParams();
   const q = (params.get('q') || '').trim();
   const [input, setInput] = useState(q);
+  const pushedRef = useRef(q);
   const [market, setMarket] = useState('ALL');
   const [search, setSearch] = useState({ q: null, results: [], error: null });
 
-  // URL -> input (header search box navigates here)
-  useEffect(() => { setInput(q); }, [q]);
+  useEffect(() => { if (q !== pushedRef.current) { pushedRef.current = q; setInput(q); } }, [q]);
 
-  // input -> URL, debounced
   useEffect(() => {
     const t = setTimeout(() => {
       const next = input.trim();
-      if (next !== q) setParams(next ? { q: next } : {}, { replace: true });
+      if (next !== pushedRef.current) {
+        pushedRef.current = next;
+        setParams(next ? { q: next } : {}, { replace: true });
+      }
     }, 350);
     return () => clearTimeout(t);
   }, [input, q, setParams]);
 
-  // Run the search for the URL query
   useEffect(() => {
     if (q.length < 1) { setSearch({ q: null, results: [], error: null }); return undefined; }
     const ctrl = new AbortController();
@@ -64,7 +64,6 @@ export default function StockExplorer() {
 
   const searching = q.length > 0 && search.q !== q;
   const symbols = useMemo(() => (q ? search.results.map((r) => r.symbol) : POPULAR), [q, search.results]);
-  // The server caches search results for hours, so always overlay a fresh batch quote.
   const { quotes, loading: quotesLoading, updatedAt, error: quotesError } = useQuotes(searching ? [] : symbols, { interval: 60_000 });
 
   const rows = useMemo(() => {

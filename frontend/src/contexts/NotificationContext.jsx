@@ -7,7 +7,7 @@ export const useNotification = () => useContext(NotificationContext);
 
 export const NotificationProvider = ({ children }) => {
   const getUserId = () => localStorage.getItem('userId') || 'guest';
-  const getStorageKey = () => `stockpulse-notifications-${getUserId()}`;
+  const getStorageKey = () => `quanta-notifications-${getUserId()}`;
 
   const [notifications, setNotifications] = useState(() => {
     const saved = localStorage.getItem(getStorageKey());
@@ -16,7 +16,6 @@ export const NotificationProvider = ({ children }) => {
   
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Reload notifications when auth changes
   useEffect(() => {
     const handleAuthChange = () => {
       const saved = localStorage.getItem(getStorageKey());
@@ -37,14 +36,13 @@ export const NotificationProvider = ({ children }) => {
       id: Date.now().toString(),
       title,
       message,
-      type, // 'success', 'error', 'info', 'warning'
+      type,
       date: new Date().toISOString(),
       read: false
     };
 
-    setNotifications(prev => [newNotification, ...prev].slice(0, 50)); // Keep max 50
+    setNotifications(prev => [newNotification, ...prev].slice(0, 50));
 
-    // Also trigger a popup toast
     if (type === 'success') toast.success(message);
     else if (type === 'error') toast.error(message);
     else toast(message, { icon: 'ℹ️' });

@@ -1,7 +1,5 @@
-/* Quanta global styles. Design tokens live in styles/tokens.css */
 @import "./styles/tokens.css";
 
-/* === RESET === */
 *, *::before, *::after {
   margin: 0;
   padding: 0;
@@ -70,7 +68,6 @@ input::placeholder, textarea::placeholder {
   color: var(--text-3);
 }
 
-/* === LAYOUT === */
 .container {
   max-width: 1280px;
   width: 100%;
@@ -82,11 +79,9 @@ input::placeholder, textarea::placeholder {
   .container { padding: 0 16px; }
 }
 
-/* === FOCUS === */
 :focus-visible { outline: 2px solid var(--q-info); outline-offset: 2px; }
 input:focus-visible, textarea:focus-visible, select:focus-visible { outline: none; }
 
-/* === BUTTONS === */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -159,11 +154,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   font-size: 0.8125rem;
 }
 
-/* === SEMANTIC TEXT === */
 .positive { color: var(--green) !important; }
 .negative { color: var(--red) !important; }
 
-/* === UTILITY === */
 .text-right  { text-align: right; }
 .text-center { text-align: center; }
 
@@ -174,7 +167,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   letter-spacing: -0.01em;
 }
 
-/* === SECTION EYEBROW === */
 .section-eyebrow {
   display: inline-block;
   font-size: 0.6875rem;
@@ -185,7 +177,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   margin-bottom: 12px;
 }
 
-/* === SCROLLBAR === */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
@@ -196,7 +187,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   color: var(--text-1);
 }
 
-/* === ANIMATIONS === */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -231,7 +221,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   animation: spin 0.8s linear infinite;
 }
 
-/* === SKELETON === */
 .skeleton {
   background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-hover) 50%, var(--bg-elevated) 75%);
   background-size: 200% 100%;
@@ -239,7 +228,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   border-radius: var(--radius);
 }
 
-/* === MOBILE === */
 @media (max-width: 480px) {
   html { font-size: 15px; }
   .btn { padding: 8px 16px; font-size: 0.85rem; }

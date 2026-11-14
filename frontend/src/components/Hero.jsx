@@ -6,7 +6,6 @@ import { API_BASE_URL } from '../config';
 import axios from 'axios';
 import "./Hero.css";
 
-// ──── Company Logos (Crisp Vector Icons) ───────────────────────────────────
 const CompanyLogo = ({ type, size = 20 }) => {
   switch (type) {
     case 'apple':
@@ -71,7 +70,6 @@ const CompanyLogo = ({ type, size = 20 }) => {
   }
 };
 
-// ──── Major Stocks List ───────────────────────────────────────────────────────
 const CURATED_STOCKS = [
   {
     symbol: 'AAPL',
@@ -221,7 +219,6 @@ const CURATED_STOCKS = [
 
 const TIME_TABS = ['1D', '1W', '1M', '1Y', '5Y', 'All'];
 
-// Helper to format currency values cleanly with proper sign placement
 const formatVal = (currency, val, decimals = 2, showPlus = false) => {
   if (val === null || val === undefined || isNaN(val)) return '—';
   const num = Number(val);
@@ -230,18 +227,15 @@ const formatVal = (currency, val, decimals = 2, showPlus = false) => {
   return `${sign}${currency}${formatted}`;
 };
 
-// ──── Generate Realistic Candles for Timeframes ─────────────────────────────
 const generateCandlesForStock = (stock, currentPrice, currentChange, timeframe, historyData = []) => {
   const p = currentPrice || stock.basePrice;
   const isPos = currentChange >= 0;
 
-  // If real historical data is available and user chose 1W, 1M, 1Y
   if (historyData && historyData.length > 5 && timeframe !== '1D') {
     let sliced = [];
     if (timeframe === '1W') sliced = historyData.slice(-7);
     else if (timeframe === '1M') sliced = historyData.slice(-22);
     else if (timeframe === '1Y') {
-      // sample every 3rd or 4th point
       sliced = historyData.filter((_, idx) => idx % 3 === 0).slice(-26);
     } else {
       sliced = historyData.filter((_, idx) => idx % 5 === 0).slice(-24);
@@ -259,7 +253,6 @@ const generateCandlesForStock = (stock, currentPrice, currentChange, timeframe, 
     }
   }
 
-  // High-fidelity intraday / synthetic candles matching real stock price
   const candleCount = 20;
   const delta = (p * (stock.baseChangePercent || 1.2)) / 100;
   const startP = p - delta;
@@ -269,14 +262,12 @@ const generateCandlesForStock = (stock, currentPrice, currentChange, timeframe, 
   let cur = startP;
 
   for (let i = 0; i < candleCount; i++) {
-    // Generate organic market fluctuations
     const trendWeight = isPos ? 0.62 : 0.38;
     const isUp = Math.random() < trendWeight;
     const variance = (Math.random() * 0.006 + 0.002) * p;
     
     let o = cur;
     let c = isUp ? o + variance : o - variance;
-    // ensure last candle touches actual current price
     if (i === candleCount - 1) c = p;
 
     const highExtra = Math.random() * 0.004 * p;
@@ -300,7 +291,6 @@ const generateCandlesForStock = (stock, currentPrice, currentChange, timeframe, 
   return candles;
 };
 
-// ──── Interactive Candlestick SVG Component ─────────────────────────────────
 const CandleChart = ({ candles, currency, decimals = 2, xLabels = [] }) => {
   const [hoverIdx, setHoverIdx] = useState(null);
   const svgRef = useRef(null);
@@ -329,7 +319,6 @@ const CandleChart = ({ candles, currency, decimals = 2, xLabels = [] }) => {
 
   const maxVol = Math.max(...candles.map(c => c.v || 50), 100);
 
-  // Calculate 5 clean grid price labels
   const gridSteps = 4;
   const gridPrices = useMemo(() => {
     return Array.from({ length: gridSteps + 1 }, (_, i) => {
@@ -338,7 +327,6 @@ const CandleChart = ({ candles, currency, decimals = 2, xLabels = [] }) => {
     });
   }, [minP, maxP, range, decimals]);
 
-  // Mouse move handler for crosshair & tooltip
   const handleMouseMove = (e) => {
     if (!svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
@@ -367,7 +355,6 @@ const CandleChart = ({ candles, currency, decimals = 2, xLabels = [] }) => {
         role="img"
         aria-label="Stock Candlestick Chart"
       >
-        {/* Horizontal Grid lines */}
         {gridPrices.map(p => (
           <line
             key={p}
@@ -381,7 +368,6 @@ const CandleChart = ({ candles, currency, decimals = 2, xLabels = [] }) => {
           />
         ))}
 
-        {/* Volume Bars at bottom */}
         {candles.map((c, i) => {
           const x = cx(i);
           const barH = ((c.v || 50) / maxVol) * (volH - 6);
@@ -401,7 +387,6 @@ const CandleChart = ({ candles, currency, decimals = 2, xLabels = [] }) => {
           );
         })}
 
-        {/* Candlesticks (Wicks and Bodies) */}
         {candles.map((c, i) => {
           const x = cx(i);
           const isUp = c.c >= c.o;
@@ -413,7 +398,6 @@ const CandleChart = ({ candles, currency, decimals = 2, xLabels = [] }) => {
 
           return (
             <g key={`candle-${i}`} className={`candle-group${isHovered ? ' active' : ''}`}>
-              {/* Wick */}
               <line
                 x1={x}
                 x2={x}
@@ -423,7 +407,6 @@ const CandleChart = ({ candles, currency, decimals = 2, xLabels = [] }) => {
                 strokeWidth={isHovered ? 1.8 : 1.2}
                 opacity={isHovered ? 1 : 0.8}
               />
-              {/* Body */}
               <rect
                 x={x - candleW / 2}
                 y={bodyTop}
@@ -437,7 +420,6 @@ const CandleChart = ({ candles, currency, decimals = 2, xLabels = [] }) => {
           );
         })}
 
-        {/* Vertical Crosshair Line when hovering */}
         {hoverIdx !== null && (
           <line
             x1={cx(hoverIdx)}
@@ -452,7 +434,6 @@ const CandleChart = ({ candles, currency, decimals = 2, xLabels = [] }) => {
         )}
       </svg>
 
-      {/* Y-axis Price Labels (on the right) */}
       <div className="hv-y-labels" aria-hidden="true">
         {gridPrices.map((v, i) => (
           <span key={i} className="hv-y-label">
@@ -461,7 +442,6 @@ const CandleChart = ({ candles, currency, decimals = 2, xLabels = [] }) => {
         ))}
       </div>
 
-      {/* Interactive Tooltip on Candle Hover */}
       {activeCandle && hoverIdx !== null && (
         <div
           className="hv-tooltip"
@@ -484,7 +464,6 @@ const CandleChart = ({ candles, currency, decimals = 2, xLabels = [] }) => {
         </div>
       )}
 
-      {/* X-axis Time Labels */}
       <div className="hv-x-labels" aria-hidden="true">
         {xLabels.map((l, i) => (
           <span key={i} className="hv-x-label">{l}</span>
@@ -494,7 +473,6 @@ const CandleChart = ({ candles, currency, decimals = 2, xLabels = [] }) => {
   );
 };
 
-// ──── Main Hero Component ───────────────────────────────────────────────────
 const Hero = () => {
   const [selectedStock, setSelectedStock] = useState(CURATED_STOCKS[0]);
   const [activeTab, setActiveTab] = useState('1D');
@@ -513,12 +491,10 @@ const Hero = () => {
   const navigate = useNavigate();
   const { addNotification } = useNotification();
 
-  // Fetch live stock quote & history from backend
   useEffect(() => {
     let isMounted = true;
     setIsUpdating(true);
 
-    // Initial state set from stock metadata for instant responsive switch
     setLivePrice(selectedStock.basePrice);
     setPriceChange(selectedStock.baseChange);
     setChangePercent(selectedStock.baseChangePercent);
@@ -531,7 +507,6 @@ const Hero = () => {
 
     const fetchStockData = async () => {
       try {
-        // Fetch Quote
         const quoteRes = await axios.get(`${API_BASE_URL}/api/stocks/quote/${encodeURIComponent(selectedStock.symbol)}`, {
           timeout: 4000
         });
@@ -549,11 +524,9 @@ const Hero = () => {
           }));
         }
       } catch (err) {
-        // Silently use realistic simulated fallback
       }
 
       try {
-        // Fetch History
         const histRes = await axios.get(`${API_BASE_URL}/api/stocks/history/${encodeURIComponent(selectedStock.symbol)}`, {
           timeout: 4500
         });
@@ -561,7 +534,6 @@ const Hero = () => {
           setHistoryData(histRes.data);
         }
       } catch (err) {
-        // Use realistic calculated candles
       } finally {
         if (isMounted) setIsUpdating(false);
       }
@@ -574,7 +546,6 @@ const Hero = () => {
     };
   }, [selectedStock]);
 
-  // Live Micro-Ticker: Subtle realistic price ticks every 4 seconds to feel genuinely dynamic
   useEffect(() => {
     const interval = setInterval(() => {
       setLivePrice(prev => {
@@ -582,7 +553,6 @@ const Hero = () => {
         const tickVal = (prev * microDeltaPercent) / 100;
         const newPrice = Number((prev + tickVal).toFixed(selectedStock.priceDecimals));
         
-        // update change accordingly
         setPriceChange(prevChg => Number((prevChg + tickVal).toFixed(selectedStock.priceDecimals)));
         return newPrice;
       });
@@ -591,7 +561,6 @@ const Hero = () => {
     return () => clearInterval(interval);
   }, [selectedStock]);
 
-  // Generate candles based on current state
   const candles = useMemo(() => {
     return generateCandlesForStock(
       selectedStock,
@@ -655,7 +624,6 @@ const Hero = () => {
       <section className="hero" aria-labelledby="hero-heading">
         <div className="hero-inner">
           <div className="hero-body">
-            {/* ── LEFT CONTENT ── */}
             <div className="hero-content">
               <span className="hero-eyebrow">DATA. INSIGHTS. BETTER DECISIONS.</span>
 
@@ -682,7 +650,6 @@ const Hero = () => {
                 </Link>
               </div>
 
-              {/* Stats */}
               <div className="hero-stats">
                 <div className="hero-stat-item">
                   <span className="hero-stat-number">5K+</span>
@@ -703,10 +670,8 @@ const Hero = () => {
               </div>
             </div>
 
-            {/* ── RIGHT — DYNAMIC STOCK CARD ── */}
             <div className="hero-visual" aria-label="Interactive Stock Chart Card">
               
-              {/* Quick Stock Switcher Pills (Indian & Global Giants) */}
               <div className="hv-stocks-bar" role="tablist" aria-label="Select stock">
                 <span className="hv-bar-label">WATCHLIST:</span>
                 <div className="hv-stocks-scroll">
@@ -728,7 +693,6 @@ const Hero = () => {
                 </div>
               </div>
 
-              {/* Card Header */}
               <div className="hv-header">
                 <div className="hv-stock-info">
                   <div className="hv-stock-logo">
@@ -746,7 +710,6 @@ const Hero = () => {
                   </div>
                 </div>
 
-                {/* Time Range Tabs */}
                 <div className="hv-time-tabs" role="tablist" aria-label="Chart time range">
                   {TIME_TABS.map(tab => (
                     <button
@@ -762,7 +725,6 @@ const Hero = () => {
                 </div>
               </div>
 
-              {/* Price & Change Section */}
               <div className="hv-price-section">
                 <span className="hv-price">
                   {formatVal(selectedStock.currency, livePrice, selectedStock.priceDecimals)}
@@ -773,7 +735,6 @@ const Hero = () => {
                 {isUpdating && <RefreshCw size={13} className="hv-refresh-spinner" />}
               </div>
 
-              {/* Dynamic Candlestick Chart Area */}
               <div className="hv-chart-area">
                 <CandleChart
                   candles={candles}
@@ -783,7 +744,6 @@ const Hero = () => {
                 />
               </div>
 
-              {/* Key Metrics Grid */}
               <div className="hv-metrics">
                 <div className="hv-metric">
                   <span className="hv-metric-label">Market Cap</span>
@@ -808,7 +768,6 @@ const Hero = () => {
         </div>
       </section>
 
-      {/* ── FEATURE STRIP (Below Hero) ── */}
       <div className="hero-features">
         <div className="hero-features-inner">
           {FEATURES.map(({ icon: Icon, iconClass, title, desc, path, protected: prot }) => (

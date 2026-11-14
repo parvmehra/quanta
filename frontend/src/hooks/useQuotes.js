@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 
-const CHUNK = 20; // backend limit per batch request
+const CHUNK = 20;
 
-/** Batch quotes for any number of symbols -> { [SYMBOL]: quote }. */
 export function useQuotes(symbols, { interval = 0 } = {}) {
   const key = useMemo(() => [...new Set((symbols || []).map((s) => String(s).toUpperCase()))].sort().join(','), [symbols]);
   const [state, setState] = useState({ quotes: {}, error: null, loading: Boolean(key), updatedAt: null });

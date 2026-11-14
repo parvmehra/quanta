@@ -2,7 +2,7 @@
 
 Financial analytics and paper-trading platform: explore markets, research stocks, manage a portfolio and simulate trades. Trades are **simulated** — no real orders are placed and no payment gateway is used.
 
-> Status: redevelopment in progress. See `docs/PROJECT_AUDIT.md` and `docs/IMPLEMENTATION_PLAN.md`.
+Project notes: `docs/PROJECT_AUDIT.md` (current state and known issues) and `docs/IMPLEMENTATION_PLAN.md` (roadmap).
 
 ## Stack
 React 19 · Vite · React Router · Recharts · Lightweight Charts · Express 5 · Socket.IO · Yahoo Finance (`yahoo-finance2`).

@@ -1,12 +1,10 @@
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/env.js";
-// import User from "../models/userModel.js";
 import { store } from "../dataStore.js";
 
 export const protect = async (req, res, next) => {
   let token;
 
-  // Get token from Authorization header or HTTP-only cookie
   if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
     token = req.headers.authorization.split(" ")[1];
   } else if (req.cookies && req.cookies.token) {
@@ -17,7 +15,6 @@ export const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    // req.user = await User.findById(decoded.id).select("-password");
     const user = store.users.find(u => u._id === decoded.id);
     if (!user) throw new Error("Not found");
     req.user = { ...user };

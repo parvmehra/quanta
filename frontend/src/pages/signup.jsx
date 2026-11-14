@@ -15,7 +15,6 @@ const Signup = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Email verification step state
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyCode, setVerifyCode] = useState('');
   const [devCode, setDevCode] = useState(null);
@@ -267,7 +266,6 @@ const Signup = () => {
             </p>
           </>
         ) : (
-          /* Email Verification Code View */
           <div className="verify-view animate-fade-in">
             <div className="auth-header">
               <div className="verify-badge-icon">

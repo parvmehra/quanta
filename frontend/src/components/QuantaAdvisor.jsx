@@ -9,14 +9,9 @@ import { API_BASE_URL } from '../config';
 import { getCurrencyCode } from '../utils/currency';
 import './QuantaAdvisor.css';
 
-/**
- * Lightweight Markdown Parser for financial responses
- */
 const FormattedAdvisorText = ({ content }) => {
-  // Strip out actions comment block
   const cleanedText = (content || '').replace(/<!--ACTIONS:[\s\S]*?-->/g, '').trim();
 
-  // Split into lines to render headings, lists, tables, paragraphs
   const lines = cleanedText.split('\n');
   const elements = [];
   let currentList = [];
@@ -40,7 +35,6 @@ const FormattedAdvisorText = ({ content }) => {
       const rows = currentTable.map(r => r.split('|').map(c => c.trim()).filter(Boolean));
       if (rows.length >= 2) {
         const header = rows[0];
-        // skip separator row if present
         const bodyRows = rows.slice(1).filter(r => !r.every(c => c.startsWith('---') || c.startsWith(':--')));
         
         elements.push(
@@ -72,11 +66,8 @@ const FormattedAdvisorText = ({ content }) => {
 
   const formatInline = (text) => {
     if (!text) return '';
-    // Format bold
     let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    // Format italics
     formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    // Format ticker links [Switch to TICKER](#)
     formatted = formatted.replace(/\[Switch to ([A-Z0-9.-]+)\]\([^)]*\)/g, '<span class="mla-inline-ticker">$1</span>');
     return formatted;
   };
@@ -137,7 +128,6 @@ const QuantaAdvisor = ({
   const priceCurrencyCode = getCurrencyCode(symbol, stockData?.exchange);
   const priceCurrencySymbol = priceCurrencyCode === 'INR' ? '₹' : '$';
 
-  // Generate contextual default question chips based on active symbol
   const getDefaultChips = (sym) => [
     `Analyze ${sym}`,
     `Should I buy, sell, or hold?`,
@@ -147,7 +137,6 @@ const QuantaAdvisor = ({
     `Explain its recent price movement`,
   ];
 
-  // Initialize or track stock changes
   useEffect(() => {
     if (!symbol) return;
 
@@ -155,7 +144,6 @@ const QuantaAdvisor = ({
     setSuggestedQuestions(defaultChips);
 
     if (messages.length === 0) {
-      // First initialization
       setActiveStock(symbol);
       setMessages([
         {
@@ -172,7 +160,6 @@ const QuantaAdvisor = ({
         },
       ]);
     } else if (activeStock !== symbol) {
-      // Stock switched! Keep history, but insert context separator and update active stock
       setActiveStock(symbol);
       setMessages(prev => [
         ...prev,
@@ -197,12 +184,10 @@ const QuantaAdvisor = ({
     }
   }, [symbol, stockData?.name]);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // Send message to backend Gemini Advisor
   const sendMessage = async (textToSend) => {
     const text = (textToSend || inputValue).trim();
     if (!text || isLoading) return;
@@ -221,7 +206,6 @@ const QuantaAdvisor = ({
     setIsLoading(true);
 
     try {
-      // Prepare compact conversation history
       const historyPayload = messages
         .filter(m => !m.isContextDivider && m.content)
         .slice(-6)
@@ -230,7 +214,6 @@ const QuantaAdvisor = ({
           content: m.content,
         }));
 
-      // Enrich payload with live terminal metrics
       const contextPayload = {
         name: stockData?.name || symbol,
         price: stockData?.price || 0,
@@ -321,7 +304,6 @@ const QuantaAdvisor = ({
     setSuggestedQuestions(getDefaultChips(symbol));
   };
 
-  // Dispatch action clicks to Trade Terminal handlers
   const handleActionClick = (action) => {
     if (!action) return;
 
@@ -338,7 +320,6 @@ const QuantaAdvisor = ({
     } else if (action.type === 'ADD_WATCHLIST') {
       if (onAddToWatchlist) onAddToWatchlist();
     } else {
-      // Fallback: ask AI about this action
       sendMessage(action.label || `Details on ${action.symbol}`);
     }
   };
@@ -346,7 +327,6 @@ const QuantaAdvisor = ({
   return (
     <div className="mla-panel animate-fade-in" role="complementary" aria-label="Quanta AI Advisor">
       
-      {/* ── 1. HEADER ── */}
       <div className="mla-header">
         <div className="mla-header-left">
           <div className="mla-bot-avatar">
@@ -391,7 +371,6 @@ const QuantaAdvisor = ({
         </div>
       </div>
 
-      {/* ── 2. CONTEXT BANNER ── */}
       <div className="mla-context-banner">
         <div className="mla-context-tag">
           <span className="mla-context-dot"></span>
@@ -408,7 +387,6 @@ const QuantaAdvisor = ({
         </div>
       </div>
 
-      {/* ── 3. CHAT CONVERSATION AREA ── */}
       <div className="mla-messages-container">
         {messages.map((msg) => {
           if (msg.isContextDivider) {
@@ -433,7 +411,6 @@ const QuantaAdvisor = ({
                       onSwitchStock={onSwitchStock} 
                     />
 
-                    {/* Action Buttons in AI Responses */}
                     {msg.actions && msg.actions.length > 0 && (
                       <div className="mla-actions-block">
                         <span className="mla-actions-title">
@@ -492,7 +469,6 @@ const QuantaAdvisor = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── 4. SUGGESTED QUESTION CHIPS ── */}
       {suggestedQuestions.length > 0 && (
         <div className="mla-suggested-section">
           <div className="mla-suggested-header">
@@ -514,7 +490,6 @@ const QuantaAdvisor = ({
         </div>
       )}
 
-      {/* ── 5. INPUT & SEND ── */}
       <div className="mla-input-bar">
         <input
           ref={inputRef}

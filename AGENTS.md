@@ -1,11 +1,11 @@
 # Quanta — Agent Guidelines
 
-Quanta is a financial analytics and paper-trading web app (formerly "MarketLens"), being redeveloped incrementally. **Read `docs/PROJECT_AUDIT.md` (what exists, what is broken) and `docs/IMPLEMENTATION_PLAN.md` (phases, decisions) before changing code.** Do not rewrite from scratch; preserve working features.
+Quanta is a financial analytics and paper-trading web app, developed incrementally. **Read `docs/PROJECT_AUDIT.md` (what exists, what is broken) and `docs/IMPLEMENTATION_PLAN.md` (phases, decisions) before changing code.** Do not rewrite from scratch; preserve working features.
 
 ## Layout
 - `backend/` — Express 5 (ESM) + Socket.IO on one server, default port **3001**. Persistence is currently a JSON file (`backend/.data/data.json`, gitignored); MongoDB migration is planned (Phase 6A).
 - `frontend/` — Vite + React 19, plain CSS, react-router v7, dev server **5173**.
-- `frontend/src/styles/tokens.css` — design tokens (use these, never raw hex). Legacy names (`--bg-body`, `--text-1`, `--accent`) are aliases kept for pages not yet redesigned.
+- `frontend/src/styles/tokens.css` — design tokens (use these, never raw hex). Legacy names (`--bg-body`, `--text-1`, `--accent`) are aliases kept for pages that have not been moved to the new tokens yet.
 - `frontend/src/layouts/` — `AppShell` (sidebar + top bar + index strip, used by app pages) and `PublicLayout` (landing/login/signup/about).
 - `frontend/src/components/ui/ui.jsx` — shared primitives (`ChangeValue`, `Badge`, `Skeleton`, `EmptyState`, `ErrorState`).
 

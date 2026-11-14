@@ -18,7 +18,6 @@ if (!accountSid || !authToken || !accountSid.startsWith('AC')) {
   process.exit(1);
 }
 
-// Get recipient phone number from CLI argument: e.g. node test-sms.js +1234567890
 const targetPhone = process.argv[2];
 
 if (!targetPhone) {

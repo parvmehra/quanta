@@ -1,8 +1,3 @@
-/* ==========================================
-   StockDetails.css — Premium Financial UI
-   ========================================== */
-
-/* === PAGE === */
 .sd-page {
   min-height: auto;
   padding: 24px 24px 60px;
@@ -10,7 +5,6 @@
   overflow: hidden;
 }
 
-/* Ambient background glow */
 .sd-ambient-glow {
   position: fixed;
   top: -200px;
@@ -34,7 +28,6 @@
   z-index: 1;
 }
 
-/* === LOADING === */
 .sd-loading-screen {
   display: flex;
   flex-direction: column;
@@ -59,7 +52,6 @@
   to { transform: rotate(360deg); }
 }
 
-/* === ERROR === */
 .sd-error-page {
   display: flex;
   align-items: center;
@@ -124,7 +116,6 @@
   transform: translateY(-1px);
 }
 
-/* === TOP BAR === */
 .sd-topbar {
   display: flex;
   align-items: center;
@@ -161,7 +152,6 @@
   gap: 10px;
 }
 
-/* Connection Badge */
 .sd-connection-badge {
   display: inline-flex;
   align-items: center;
@@ -212,7 +202,6 @@
   50% { opacity: 0.4; transform: scale(0.8); }
 }
 
-/* Subscribe Button */
 .sd-subscribe-btn {
   display: inline-flex;
   align-items: center;
@@ -266,7 +255,6 @@
   transform: translateY(-1px);
 }
 
-/* === HERO HEADER === */
 .sd-hero {
   display: flex;
   align-items: flex-end;
@@ -282,7 +270,6 @@
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
-/* Subtle decorative gradient behind the hero */
 .sd-hero::before {
   content: '';
   position: absolute;
@@ -393,7 +380,6 @@
   opacity: 0.8;
 }
 
-/* === TABS === */
 .sd-tabs {
   display: flex;
   gap: 4px;
@@ -433,10 +419,9 @@
 }
 
 .sd-tab-indicator {
-  display: none; /* handled by bg color now */
+  display: none;
 }
 
-/* === CHART === */
 .sd-chart-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -494,7 +479,6 @@
   font-size: 0.9rem;
 }
 
-/* Custom Chart Tooltip */
 .chart-custom-tooltip {
   background: var(--bg-elevated);
   border: 1px solid var(--border-hover);
@@ -517,7 +501,6 @@
   margin: 0;
 }
 
-/* === KEY STATISTICS === */
 .sd-stats-section {
   margin-bottom: 32px;
 }
@@ -555,7 +538,6 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
-/* Tinted icon boxes matching homepage feature cards */
 .sd-stat-icon {
   width: 44px;
   height: 44px;
@@ -617,7 +599,6 @@
   text-overflow: ellipsis;
 }
 
-/* === NEWS === */
 .sd-news-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -755,7 +736,6 @@
   letter-spacing: 0.02em;
 }
 
-/* Empty State */
 .sd-empty-state {
   display: flex;
   flex-direction: column;
@@ -770,7 +750,6 @@
   font-size: 0.9rem;
 }
 
-/* === RESPONSIVE === */
 @media (max-width: 1024px) {
   .sd-stats-grid {
     grid-template-columns: repeat(2, 1fr);

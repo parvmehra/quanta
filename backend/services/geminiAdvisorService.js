@@ -8,7 +8,6 @@ dotenv.config();
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
 
-// Known peers and competitors for major global and Indian stocks
 const PEER_MAP = {
   'AAPL': ['MSFT', 'GOOGL', 'NVDA', 'META', 'AMZN'],
   'MSFT': ['AAPL', 'GOOGL', 'AMZN', 'ORCL', 'IBM'],
@@ -31,9 +30,6 @@ const PEER_MAP = {
   'WIPRO.NS': ['TCS.NS', 'INFY.NS', 'HCLTECH.NS', 'LTIM.NS'],
 };
 
-/**
- * Fetch real news for ticker if available
- */
 async function getTickerNews(symbol) {
   try {
     const fetchPromise = yahooFinance.search(symbol, { newsCount: 4 }, { validateResult: false });
@@ -47,14 +43,10 @@ async function getTickerNews(symbol) {
       }));
     }
   } catch (e) {
-    // news search silent fallback
   }
   return [];
 }
 
-/**
- * Build rich system prompt injecting real market data
- */
 function buildSystemPrompt(symbol, context, newsList) {
   const isIndian = symbol.toUpperCase().endsWith('.NS') || symbol.toUpperCase().endsWith('.BO') || context?.exchange === 'NSE' || context?.exchange === 'BSE';
   const currencySymbol = isIndian ? '₹' : '$';
@@ -117,9 +109,6 @@ ${newsSummary}
 `;
 }
 
-/**
- * Intelligent real-market fallback when Gemini API key is absent or limited
- */
 function generateAnalyticalFallback(symbol, message, context, newsList, history = []) {
   const sym = symbol.toUpperCase();
   const isIndian = sym.endsWith('.NS') || sym.endsWith('.BO') || context?.exchange === 'NSE' || context?.exchange === 'BSE';
@@ -139,7 +128,6 @@ function generateAnalyticalFallback(symbol, message, context, newsList, history 
 
   const msgLower = (message || '').toLowerCase();
 
-  // Track what topics were already covered in conversation to avoid repetition
   const pastTopics = new Set();
   if (Array.isArray(history)) {
     history.forEach(h => {
@@ -169,7 +157,6 @@ function generateAnalyticalFallback(symbol, message, context, newsList, history 
     bias = 'Upward Momentum';
   }
 
-  // Computed metrics for deeper analysis variants
   const spread = (Number(dayHigh) - Number(dayLow)).toFixed(2);
   const spreadPct = ((Number(spread) / Number(price)) * 100).toFixed(2);
   const priceVsSma = ((Number(price) - Number(sma)) / Number(sma) * 100).toFixed(2);
@@ -188,7 +175,6 @@ function generateAnalyticalFallback(symbol, message, context, newsList, history 
     `Compare ${sym} with ${peers[0]}`,
   ];
 
-  // Determine which category the question falls into
   let category = 'general';
   if (msgLower.includes('risk') || msgLower.includes('danger') || msgLower.includes('downside')) {
     category = 'risk';
@@ -206,7 +192,6 @@ function generateAnalyticalFallback(symbol, message, context, newsList, history 
     category = 'technical';
   }
 
-  // If the user asks about the same topic again, provide a deeper / alternate variation
   const isRepeatTopic = pastTopics.has(category);
 
   if (category === 'risk') {
@@ -386,7 +371,6 @@ Use **Bracket Orders** in the Trade panel to automate your entry/SL/TP.`;
     questions = [`What does the RSI divergence suggest?`, `Should I use SMA crossover strategy?`, `Explain the volume profile`];
 
   } else {
-    // General / Comprehensive Analysis — varies based on repeat
     if (!isRepeatTopic) {
       body = `### 📊 Quanta Analysis: ${companyName} (${sym})
 
@@ -423,17 +407,12 @@ ${newsList.length > 0 ? `
   };
 }
 
-/**
- * Main service method to process user questions with Gemini API
- */
 export async function getGeminiAdvisorResponse({ symbol, message, history = [], context = {} }) {
   const sym = (symbol || 'AAPL').toUpperCase();
   const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || GEMINI_API_KEY || '').trim();
 
-  // Fetch real headlines to ground the model
   const newsList = await getTickerNews(sym);
 
-  // If Gemini API key is not configured, return high-accuracy real-data analytical fallback
   if (!apiKey) {
     console.log(`ℹ️ GEMINI_API_KEY not found. Using grounded analytical advisor engine for ${sym}.`);
     return generateAnalyticalFallback(sym, message, context, newsList, history);
@@ -441,14 +420,11 @@ export async function getGeminiAdvisorResponse({ symbol, message, history = [], 
 
   const systemInstruction = buildSystemPrompt(sym, context, newsList);
 
-  // Format conversation history for Gemini API
   const formattedContents = [];
 
-  // Add previous turns if provided
   if (Array.isArray(history)) {
     history.slice(-6).forEach(item => {
       if (item && item.role && item.content) {
-        // Strip out actions tag from prompt history
         const cleanContent = item.content.replace(/<!--ACTIONS:[\s\S]*?-->/g, '').trim();
         formattedContents.push({
           role: item.role === 'model' || item.role === 'assistant' ? 'model' : 'user',
@@ -458,7 +434,6 @@ export async function getGeminiAdvisorResponse({ symbol, message, history = [], 
     });
   }
 
-  // Add the current user query with contextual reminder
   formattedContents.push({
     role: 'user',
     parts: [{
@@ -498,7 +473,6 @@ export async function getGeminiAdvisorResponse({ symbol, message, history = [], 
 
       if (textOutput && textOutput.trim()) {
         console.log(`✅ Gemini response generated via model: ${model} for ${sym}`);
-        // Extract actions metadata if embedded
         let actions = [];
         let questions = [];
 
@@ -513,7 +487,6 @@ export async function getGeminiAdvisorResponse({ symbol, message, history = [], 
           }
         }
 
-        // Default actions if none provided by model
         if (!actions || actions.length === 0) {
           actions = [
             { type: 'BUY_ORDER', label: 'Open Buy Order', symbol: sym },
@@ -539,11 +512,9 @@ export async function getGeminiAdvisorResponse({ symbol, message, history = [], 
       }
     } catch (err) {
       console.warn(`⚠️ Model ${model} failed: ${err.response?.data?.error?.message || err.message}`);
-      // continue to next model in list
     }
   }
 
-  // If Gemini calls failed or timed out, use intelligent analytical fallback grounded in real metrics
   console.warn(`Falling back to local analytical engine for ${sym}`);
   return generateAnalyticalFallback(sym, message, context, newsList, history);
 }

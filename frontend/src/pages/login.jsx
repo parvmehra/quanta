@@ -14,21 +14,18 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Verification state (if user is unverified)
   const [isVerifying, setIsVerifying] = useState(!!searchParams.get('verifyToken'));
   const [verifyCode, setVerifyCode] = useState(searchParams.get('verifyToken') || '');
   const [devVerifyCode, setDevVerifyCode] = useState(null);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // 2-Step Login OTP state
   const [isLoginOtp, setIsLoginOtp] = useState(false);
   const [loginOtpCode, setLoginOtpCode] = useState('');
   const [devLoginOtp, setDevLoginOtp] = useState(null);
   const [loginOtpCooldown, setLoginOtpCooldown] = useState(0);
 
-  // Forgot password state
   const [isForgotPassword, setIsForgotPassword] = useState(false);
-  const [forgotStep, setForgotStep] = useState(1); // 1: enter email, 2: enter code & new pwd
+  const [forgotStep, setForgotStep] = useState(1);
   const [resetCode, setResetCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [devResetCode, setDevResetCode] = useState(null);
@@ -260,7 +257,6 @@ const Login = () => {
       </div>
 
       <div className="auth-card animate-fade-in">
-        {/* VIEW 1: Standard Login Form */}
         {!isVerifying && !isForgotPassword && !isLoginOtp && (
           <>
             <div className="auth-header">
@@ -352,7 +348,6 @@ const Login = () => {
           </>
         )}
 
-        {/* VIEW 1.5: 2-Step Login OTP Verification */}
         {isLoginOtp && !isVerifying && !isForgotPassword && (
           <div className="verify-view animate-fade-in">
             <div className="auth-header">
@@ -431,7 +426,6 @@ const Login = () => {
           </div>
         )}
 
-        {/* VIEW 2: Email Verification Flow */}
         {isVerifying && (
           <div className="verify-view animate-fade-in">
             <div className="auth-header">
@@ -502,7 +496,6 @@ const Login = () => {
           </div>
         )}
 
-        {/* VIEW 3: Forgot Password Flow */}
         {isForgotPassword && (
           <div className="forgot-view animate-fade-in">
             <div className="auth-header">

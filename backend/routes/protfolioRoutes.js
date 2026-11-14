@@ -6,7 +6,6 @@ import crypto from "crypto";
 
 const router = express.Router();
 
-// --- GET Portfolio
 router.get("/", protect, async (req, res) => {
   try {
     const items = store.portfolios.filter(p => p.user === req.user._id).sort((a, b) => b.createdAt - a.createdAt);
@@ -16,7 +15,6 @@ router.get("/", protect, async (req, res) => {
   }
 });
 
-// --- POST Portfolio Item (BUY Order)
 router.post("/", protect, async (req, res) => {
   const { symbol, shares, avgPrice, name, currentPrice } = req.body;
   try {
@@ -33,7 +31,6 @@ router.post("/", protect, async (req, res) => {
     store.portfolios.push(item);
     saveStore();
 
-    // Trigger trade confirmation notification
     const fullUser = store.users.find(u => u._id === req.user._id);
     if (fullUser) {
       notifyUser(fullUser, 'STOCK_PURCHASE', {
@@ -54,7 +51,6 @@ router.post("/", protect, async (req, res) => {
   }
 });
 
-// --- PUT Portfolio Item
 router.put("/:id", protect, async (req, res) => {
   const { shares, avgPrice, currentPrice, name } = req.body;
   try {
@@ -73,7 +69,6 @@ router.put("/:id", protect, async (req, res) => {
   }
 });
 
-// --- DELETE Portfolio Item
 router.delete("/:id", protect, async (req, res) => {
   try {
     const itemIndex = store.portfolios.findIndex(p => p._id === req.params.id && p.user === req.user._id);
@@ -87,7 +82,6 @@ router.delete("/:id", protect, async (req, res) => {
   }
 });
 
-// --- POST Bulk Import (for broker CSV imports)
 router.post("/bulk", protect, async (req, res) => {
   const { holdings } = req.body;
 

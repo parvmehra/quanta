@@ -40,4 +40,3 @@ if (isFirebaseConfigured) {
 export { auth, googleProvider };
 export default app;
 
-

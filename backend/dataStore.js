@@ -5,7 +5,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Store persistence inside .data directory to prevent nodemon from restarting the server on writes
 const dataDir = path.join(__dirname, '.data');
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
@@ -39,7 +38,6 @@ export const store = loadData();
 
 let saveTimeout = null;
 export const saveStore = () => {
-  // Save immediately in memory and debounce disk flush by 100ms
   if (saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
     saveData(store);

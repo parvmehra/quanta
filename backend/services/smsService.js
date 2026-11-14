@@ -3,7 +3,6 @@ import twilio from 'twilio';
 import crypto from 'crypto';
 import { store, saveStore } from '../dataStore.js';
 
-// ── Twilio Client Initialization ───────────────────────────────────────────
 let twilioClient = null;
 let hasTwilioCredentials = false;
 
@@ -28,11 +27,6 @@ export const initTwilio = () => {
 
 initTwilio();
 
-// ── Phone Validation (E.164 Format) ────────────────────────────────────────
-/**
- * Validates whether a phone number adheres to international E.164 format.
- * E.g., +14155552671 or +919876543210
- */
 export const isValidE164 = (phone) => {
   if (!phone || typeof phone !== 'string') return false;
   const clean = phone.trim();
@@ -40,7 +34,6 @@ export const isValidE164 = (phone) => {
   return e164Regex.test(clean);
 };
 
-// ── Notification Logging ───────────────────────────────────────────────────
 const logSms = (userId, eventType, recipient, message, status, referenceId = null) => {
   try {
     if (!store.notificationLogs) store.notificationLogs = [];
@@ -63,7 +56,6 @@ const logSms = (userId, eventType, recipient, message, status, referenceId = nul
   }
 };
 
-// ── Core SMS Sender ────────────────────────────────────────────────────────
 export const sendSms = async ({ to, message, userId = null, eventType = 'GENERAL', referenceId = null }) => {
   if (!isValidE164(to)) {
     console.warn(`⚠️ Invalid E.164 format for phone: ${to}`);
@@ -71,7 +63,6 @@ export const sendSms = async ({ to, message, userId = null, eventType = 'GENERAL
     return { success: false, error: 'Invalid international phone number format (must be E.164, e.g. +14155552671)' };
   }
 
-  // If no Twilio credentials configured, simulate delivery safely
   if (!hasTwilioCredentials || !twilioClient) {
     console.log(`\n📱 [SIMULATED SMS] To: ${to}`);
     console.log(`Message: "${message}"\n`);
@@ -90,7 +81,7 @@ export const sendSms = async ({ to, message, userId = null, eventType = 'GENERAL
     } else if (process.env.TWILIO_PHONE_NUMBER) {
       payload.from = process.env.TWILIO_PHONE_NUMBER;
     } else {
-      payload.from = '+15005550006'; // Twilio test number fallback
+      payload.from = '+15005550006';
     }
 
     const res = await twilioClient.messages.create(payload);
@@ -103,26 +94,20 @@ export const sendSms = async ({ to, message, userId = null, eventType = 'GENERAL
   }
 };
 
-// ── OTP & Phone Verification Services ──────────────────────────────────────
-
-/**
- * Generate and dispatch a 6-digit phone verification OTP
- */
 export const sendPhoneVerificationOtp = async (user, phoneNumber) => {
   if (!isValidE164(phoneNumber)) {
     throw new Error('Please enter a valid international mobile number in E.164 format (e.g. +14155552671 or +919876543210)');
   }
 
   const now = Date.now();
-  const COOLDOWN_MS = 60 * 1000; // 60 seconds resend cooldown
-  const EXPIRY_MS = 10 * 60 * 1000; // 10 minutes expiry
+  const COOLDOWN_MS = 60 * 1000;
+  const EXPIRY_MS = 10 * 60 * 1000;
 
   if (user.phoneOtpLastSent && now - user.phoneOtpLastSent < COOLDOWN_MS) {
     const waitSeconds = Math.ceil((COOLDOWN_MS - (now - user.phoneOtpLastSent)) / 1000);
     throw new Error(`Please wait ${waitSeconds} seconds before requesting a new OTP code`);
   }
 
-  // Generate secure 6-digit OTP
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
   const hashedOtp = crypto.createHash('sha256').update(otpCode).digest('hex');
 
@@ -149,7 +134,6 @@ export const sendPhoneVerificationOtp = async (user, phoneNumber) => {
   return {
     success: true,
     simulated: !!result.simulated,
-    // Return sample code in dev simulation or if Twilio fails for effortless testing
     debugOtp: isFallbackNeeded ? otpCode : undefined,
     message: result.success
       ? `Verification code sent to ${phoneNumber}`
@@ -157,9 +141,6 @@ export const sendPhoneVerificationOtp = async (user, phoneNumber) => {
   };
 };
 
-/**
- * Verify OTP entered by user
- */
 export const verifyPhoneOtp = async (user, inputOtp) => {
   if (!user.phoneVerificationOtp || !user.phoneOtpExpires) {
     throw new Error('No pending OTP request found. Please request a new code.');
@@ -188,14 +169,12 @@ export const verifyPhoneOtp = async (user, inputOtp) => {
     throw new Error('Invalid OTP code. Please check and try again.');
   }
 
-  // Success: mark phone as verified
   user.isPhoneVerified = true;
   user.phoneVerificationOtp = null;
   user.phoneOtpExpires = null;
   user.phoneOtpAttempts = 0;
   saveStore();
 
-  // Send confirmation alert
   await sendSms({
     to: user.phone,
     message: 'Your mobile number has been successfully verified for Quanta account alerts.',
@@ -205,8 +184,6 @@ export const verifyPhoneOtp = async (user, inputOtp) => {
 
   return { success: true, message: 'Mobile number verified successfully!' };
 };
-
-// ── Transactional SMS Dispatchers ──────────────────────────────────────────
 
 export const sendStockSubscriptionSMS = async (phoneNumber, symbol, companyName, userId) => {
   return sendSms({

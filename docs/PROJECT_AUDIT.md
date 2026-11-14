@@ -4,7 +4,6 @@ Audit date: 2026-11-13. Scope: `quanta-main/` only.
 Method: static code reading plus the existing unit test and ESLint. **The backend and frontend were not started, and no external API or database was called.** "Works" below means "the code path is complete and coherent", not "verified at runtime". Runtime verification is scheduled in the plan.
 No credential values appear in this document; only variable names and file names.
 
-> The existing `AGENTS.md` files and `.agents/rules/project_guide.md` describe an older "MarketLens" layout (ports, `Trade.jsx`, `Navbar.jsx`, "Finnhub/Twelve fallback", "MongoDB with JSON fallback"). Several claims are wrong (see §10). This audit is the source of truth and the AGENTS files should be rewritten at the end of Phase 1.
 
 ---
 
@@ -27,11 +26,11 @@ quanta-main/
 ```
 
 - **Persistence is a JSON file, not MongoDB.** `connectDB()` is commented out in `backend/index.js`; `mongoose` models exist but nothing imports them in the request path. `store` (users, portfolios, messages, notificationLogs, walletTransactions, subscriptions) is loaded at boot and mutated in place.
-- **Styling:** vanilla CSS with custom properties (`index.css` + per-page CSS). **Tailwind is not installed** (the brief assumes it). No design-token system is shared across pages.
+- **Styling:** vanilla CSS with custom properties (`index.css` + per-page CSS). **Tailwind is not installed**. No design-token system is shared across pages.
 - **State:** React Context (Auth, Notification, Theme, Trading) + local component state. No server-state library.
 - **API client:** mixed. `utils/axiosInstance.js` (used by auth, profile, advisor) and raw `axios` + `API_BASE_URL` (stocks, portfolio, trading). A global axios interceptor in `main.jsx` also attaches the JWT. Portfolio/trading calls pass `withCredentials: true` and also receive the Bearer header.
 - **Auth transport:** JWT stored in `localStorage` (`token`, `userId`, `isAuthenticated`) *and* set as an httpOnly cookie.
-- **Deployment hints:** Netlify redirects (`netlify.toml`, `frontend/public/_redirects`), CORS allow-list contains hosted origins (Netlify/Render). `start.bat` still says "MarketLens".
+- **Deployment hints:** Netlify redirects (`netlify.toml`, `frontend/public/_redirects`), CORS allow-list contains hosted origins (Netlify/Render).
 
 ## 2. Frontend route inventory (`frontend/src/App.jsx`)
 
@@ -39,7 +38,7 @@ quanta-main/
 |---|---|---|---|
 | `/` | `Home` → `Hero` (778 lines) | none | landing + curated stock showcase; uses simulated candles for chart fallback |
 | `/analyzer` | `StockAnalyzer` (725) | none | screener/search/market-pulse, sparkline cards |
-| `/stock/:symbol` | `StockDetails` (400) | none | quote, history, news, socket, alert subscribe, embeds `MarketLensAdvisor` |
+| `/stock/:symbol` | `StockDetails` (400) | none | quote, history, news, socket, alert subscribe, embeds `QuantaAdvisor` |
 | `/trade`, `/trade/:symbol` | `TradingTerminal` (1388) | `AuthLayout` | order form, chart, indicators |
 | `/portfolio` | `Portfolio` (645) | `AuthLayout` | holdings CRUD, CSV import, live P&L |
 | `/profile` | `Profile` (604) | `AuthLayout` | profile, wallet top-up, subscriptions, notification prefs/history |
@@ -79,7 +78,7 @@ Base: `/api`. "Auth" = `protect` middleware.
 
 Legend: ✅ works as designed (by code reading) · ⚠️ works but with significant defects · 🟡 partial / UI-only · ❌ broken or absent.
 
-| # | Feature (brief §4) | Status | Evidence / notes |
+| # | Feature | Status | Evidence / notes |
 |---|---|---|---|
 | 1 | Registration + auth | ⚠️ | Complete: bcrypt, email verification code, **email-OTP 2FA on every login**, lockout after 5 failures, rate limit, Google via Firebase. Defects: JWT secret fallback literal; `debugCode` returned to client (unconditionally in one branch of `/login`); Google fallback trusts request body when Firebase isn't configured; user records in a JSON file. |
 | 2 | Profile management | 🟡 | `Profile.jsx` shows wallet, subscriptions, notification prefs/logs, phone verification. No endpoint to edit name/email/password while logged in (only reset-by-code). |
@@ -87,10 +86,10 @@ Legend: ✅ works as designed (by code reading) · ⚠️ works but with signifi
 | 4 | Stock info/company details | 🟡 | Quote fields only (price, hi/lo, volume, market cap). No fundamentals endpoint (P/E, EPS, 52-week range come from the quote if present, otherwise absent). The trading context contains a hard-coded `STOCK_DB` of 4 NSE stocks with invented metrics (see #11). |
 | 5 | Historical charts | ⚠️ | Real Yahoo/Finnhub history, but the mock path emits random walks with HTTP 200 and no "simulated" flag. `Hero.jsx` and `StockAnalyzer.jsx` also synthesise candles/ticks client-side. |
 | 6 | Market overview | 🟡 | `market-pulse` endpoint + panel inside `StockAnalyzer`. No dedicated page. "Gainers" come from a fixed list of 10 US tickers, not the market. Static fallback values on failure. |
-| 7 | Watchlists | 🟡 | `TradingTerminal` keeps a watchlist in `localStorage['stockpulse-watchlist']` — per browser, not per user, not on the server. Server "subscriptions" are price-alert opt-ins, a different concept. |
+| 7 | Watchlists | 🟡 | `TradingTerminal` keeps a watchlist in `localStorage['quanta-watchlist']` — per browser, not per user, not on the server. Server "subscriptions" are price-alert opt-ins, a different concept. |
 | 8 | Portfolio management | ⚠️ | CRUD works (JSON store, per-user). Each BUY creates a **new row** instead of merging lots; "average price" is therefore per-lot, not per-symbol. Unvalidated `PUT` (strings/negatives accepted). |
 | 9 | Holdings + average price | ⚠️ | No server-side aggregation. Sell logic lives in the browser and reduces lots in order. No realised P&L anywhere. |
-| 10 | Simulated buy/sell | ❌ (integrity) | **There is no server-side trade engine.** The browser calls `POST /protfolio` with symbol, shares *and price*, and adjusts a wallet balance stored in `localStorage['stockpulse-wallet']`. The server wallet (`user.wallet.balance`, $500,000) is never debited by a trade. Sells are client-orchestrated DELETE/PUT calls. A user can fabricate holdings at any price via the API. |
+| 10 | Simulated buy/sell | ❌ (integrity) | **There is no server-side trade engine.** The browser calls `POST /protfolio` with symbol, shares *and price*, and adjusts a wallet balance stored in `localStorage['quanta-wallet']`. The server wallet (`user.wallet.balance`, $500,000) is never debited by a trade. Sells are client-orchestrated DELETE/PUT calls. A user can fabricate holdings at any price via the API. |
 | 11 | Trading terminal | ⚠️ | Real quotes/history via API, indicators (RSI/SMA/VWAP) computed client-side. Order types offered: MARKET, LIMIT, SL — **all execute instantly** at the form price; LIMIT/SL do not rest as pending orders. Circuit limits are computed as ±10% of previous close. `TradingContext.jsx` (a second, fully simulated terminal with random OHLC and order book) is **not imported anywhere** — dead code. Currency shown as `$` even for NSE tickers in several messages. |
 | 12 | Order types | 🟡 | See #11. No open-order state, no order history store, no cancellation. |
 | 13 | Wallet/balance | ❌ (integrity) | Two unrelated balances (server JSON vs. browser localStorage). Top-up has no payment step: any authenticated user can credit up to $10,000,000 per request, repeatedly. UI and transaction text say "Razorpay" though no gateway code exists. |
@@ -101,7 +100,7 @@ Legend: ✅ works as designed (by code reading) · ⚠️ works but with signifi
 | 18 | CSV portfolio import | ✅ | Client parses broker CSV presets (Zerodha, Groww, Angel One, Upstox, generic) → `POST /protfolio/bulk`. Server does not validate rows (NaN→0 shares allowed, no size cap). |
 | 19 | Notifications | ✅/⚠️ | Email (nodemailer, Gmail/SMTP) and SMS (Twilio) with per-event preferences and a DB log; "simulated mode" when unconfigured. In-app toast/notification context is localStorage. Trade/top-up emails are triggered by client-initiated calls. |
 | 20 | Supporting pages | ✅ | About, FAQ (static). FAQ describes features that differ from reality (e.g. real-time ticks). |
-| — | Support chat (`ChatWidget`) | ⚠️ | Not in the brief's list but exists; see security §5. |
+| — | Support chat (`ChatWidget`) | ⚠️ | Not in the original feature list but exists; see security §5. |
 
 ## 5. Security and data-integrity findings
 
@@ -128,7 +127,7 @@ Ordered by severity. **S1–S3 should be treated as exploitable today.**
 ## 6. Dead / duplicate / misleading code
 
 - `backend/controllers/protfolio.js` — CommonJS (`require`) file in an ESM package, in-memory demo data (AAPL/GOOGL/MSFT), **never imported**. Would crash if loaded. Safe to remove (Phase 6, documented).
-- `backend/models/*.js` — Mongoose `User`, `Portfolio`, `Stock` models; unused at runtime; **do not match the real JSON user shape** (missing role, wallet, verification fields, notification prefs, phone). Schemas must be redesigned, not reused as-is.
+- `backend/models/*.js` — Mongoose `User`, `Portfolio`, `Stock` models; unused at runtime; **do not match the real JSON user shape** (missing role, wallet, verification fields, notification prefs, phone). Schemas must be rewritten, not reused as-is.
 - `frontend/src/contexts/TradingContext.jsx` — entire simulated terminal (fake OHLC/order book/stock DB) never mounted. Remove or quarantine; do not reuse its fake data.
 - `frontend/src/utils/tradingCalculations.js` — tested helper functions, but `TradingTerminal.jsx` re-implements the same math inline instead of importing it (the tests do not cover production code).
 - `frontend/src/assets/react.svg`, `public/vite.svg`, `App.css` (template leftovers — to confirm).
@@ -153,7 +152,7 @@ Ordered by severity. **S1–S3 should be treated as exploitable today.**
 ## 8. Dependencies
 
 **Backend** (`package.json`): `ws` — unused (remove). `node-cache` — unused (the code uses a hand-rolled cache object; either adopt or remove). `uuid` — only imported by the dead controller (not even listed in `package.json` → the dead file would crash). `nodemon` is in `dependencies` (belongs in devDependencies). `axios` — used. `mongoose` — used only by unused modules today, but needed if we migrate (Phase 6). `firebase-admin`, `twilio`, `nodemailer` — optional features; keep, but already degrade gracefully. No `helmet`, no validation library (hand-written checks).
-**Frontend**: `react-hook-form` — **0 imports** (remove). No `tailwindcss` (brief assumes it — see decision D1 in the plan). `firebase` (large) only for Google sign-in — keep, lazy-load. `recharts` (2 files) and `lightweight-charts` (1 file) both used — keep both as the brief says. No test runner (only `node --test` on one utils file).
+**Frontend**: `react-hook-form` — **0 imports** (remove). No `tailwindcss` (see decision D1 in the plan). `firebase` (large) only for Google sign-in — keep, lazy-load. `recharts` (2 files) and `lightweight-charts` (1 file) both used — keep both. No test runner (only `node --test` on one utils file).
 **Tooling**: ESLint currently reports **62 problems (49 errors, 13 warnings)** — mostly unused vars/empty catch blocks, plus several `react-hooks/exhaustive-deps` warnings. The 8 existing unit tests pass (they test helper functions that production code does not import).
 
 ## 9. Repository hygiene
@@ -166,32 +165,20 @@ Ordered by severity. **S1–S3 should be treated as exploitable today.**
 - `.env.example` files exist for both apps and contain no values (checked key names only). The backend example lists Razorpay vars that nothing reads and omits `GMAIL_USER`/`GMAIL_APP_PASS`, which `emailService` does read; the real `backend/.env` also repeats the SMTP/Gmail block twice.
 - Ports are inconsistent across the repo: backend default 3001, local `.env` 3002, frontend fallback 3002, Vite proxy 3002, `AGENTS.md` says 3001/5000.
 
-## 10. Where `AGENTS.md` / `.agents` are wrong
-
-| Claim | Reality |
-|---|---|
-| App is "MarketLens" | Rename to Quanta (planned) |
-| `Trade.jsx`, `Navbar.jsx` | Actual: `TradingTerminal.jsx`, `Header.jsx` |
-| "MongoDB / Mongoose with JSON fallback" | JSON file only; Mongo not connected |
-| "`config.js` API_BASE_URL (5000)" and "Port 3001" | Fallback 3002; backend default 3001 |
-| "Internal offline mock generators for resilience" | True, but mock data is returned as if real — a defect, not a feature |
-| Card style spec (emerald `#101614`, 16px radius, glowing pulse) | Conflicts with the Quanta brief; supersede |
-| "Do NOT recursively search the repository again" | Instruction was written for a different layout; this audit replaces it |
-
-## 11. What must be preserved
+## 10. What must be preserved
 
 Email/password + OTP + Google login, phone verification, notification preferences and logs, stock search/quote/history/news/market-pulse endpoints (response shapes), portfolio CRUD + CSV importer and broker presets, stock-alert subscriptions, AI advisor (+ its no-key fallback), Socket.IO price-room mechanism (to be made functional), currency formatting (`utils/currency.js`, ₹ for `.NS/.BO`), existing routes (`/analyzer`, `/stock/:symbol`, `/trade[/:symbol]`, `/portfolio`, `/profile`, `/faq`, `/about`, `/login`, `/signup`), support chat (functionality kept, access fixed).
 
-## 12. Recommended modifications (summary)
+## 11. Recommended modifications (summary)
 
-1. **Fix first (before any redesign):** commit a clean baseline; untrack and purge `data.json` from history decision; stop `debugCode` leaks; remove JWT secret fallback (fail fast); close `join_admin`/chat holes; lock `cache/clear` and `advisor`; rotate exposed credentials.
+1. **Fix first :** commit a clean baseline; untrack and purge `data.json` from history decision; stop `debugCode` leaks; remove JWT secret fallback (fail fast); close `join_admin`/chat holes; lock `cache/clear` and `advisor`; rotate exposed credentials.
 2. **Make trading real (server-authoritative):** server computes fills from its own quote, debits/credits the server wallet, writes an immutable ledger, aggregates holdings per symbol, supports pending LIMIT/SL orders in a minimal in-process matcher.
-3. **Persistence:** migrate the JSON store to MongoDB via Mongoose with redesigned schemas and a one-off import script (see plan Phase 6). Verify Atlas supports multi-document transactions (replica set) — if unavailable, use single-document atomic updates with an embedded ledger entry.
+3. **Persistence:** migrate the JSON store to MongoDB via Mongoose with revised schemas and a one-off import script (see plan Phase 6). Verify Atlas supports multi-document transactions (replica set) — if unavailable, use single-document atomic updates with an embedded ledger entry.
 4. **Market data:** add an explicit `source`/`asOf`/`delayed|simulated` field to every market response; remove random mock data from production code paths (replace by a clearly labelled `DEMO_MODE`); fix the socket poller (use Yahoo `quote` batch for subscribed symbols on a sensible interval, e.g. 15 s, capped).
 5. **UI:** introduce tokens + app shell; Tailwind decision D1; reuse existing data hooks.
 6. **Dependency cleanup:** remove `ws`, `react-hook-form`; decide on `node-cache`.
 
-## 13. Open questions for the owner
+## 12. Open questions for the owner
 
 See §"Decisions requested" in `IMPLEMENTATION_PLAN.md`.
 

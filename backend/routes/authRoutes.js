@@ -12,24 +12,22 @@ import { JWT_SECRET } from '../config/env.js';
 
 const router = express.Router();
 
-// ── Rate Limiters ──────────────────────────────────────────────────────────
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 requests per window
+  windowMs: 15 * 60 * 1000,
+  max: 20,
   message: { message: 'Too many authentication attempts. Please try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 const otpLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 6, // 6 OTP requests per 10 mins
+  windowMs: 10 * 60 * 1000,
+  max: 6,
   message: { message: 'Too many OTP requests. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// ── Security Helpers ───────────────────────────────────────────────────────
 const isSecureRequest = (req) => {
   return process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https';
 };
@@ -69,7 +67,6 @@ const formatUserResponse = (user) => ({
   },
 });
 
-// ── 1. GET Current Authenticated User (/api/auth/me) ───────────────────────
 router.get('/me', protect, async (req, res) => {
   try {
     const user = store.users.find(u => u._id === req.user._id);
@@ -80,7 +77,6 @@ router.get('/me', protect, async (req, res) => {
   }
 });
 
-// ── 2. Real Registration With Email Verification (/api/auth/signup) ────────
 router.post('/signup', authLimiter, async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -100,13 +96,11 @@ router.post('/signup', authLimiter, async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Check if account already exists
     let existingUser = store.users.find(u => u.email === normalizedEmail);
     if (existingUser) {
       if (existingUser.isEmailVerified) {
         return res.status(400).json({ message: 'An account with this email already exists. Please sign in.' });
       }
-      // If unverified, refresh the verification code rather than leaking error
       const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
       existingUser.emailVerificationToken = crypto.createHash('sha256').update(verifyCode).digest('hex');
       existingUser.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000;
@@ -125,7 +119,6 @@ router.post('/signup', authLimiter, async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Generate 6-digit secure verification code
     const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedVerifyToken = crypto.createHash('sha256').update(verifyCode).digest('hex');
 
@@ -137,14 +130,14 @@ router.post('/signup', authLimiter, async (req, res) => {
       role: 'user',
       isEmailVerified: false,
       emailVerificationToken: hashedVerifyToken,
-      emailVerificationExpires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+      emailVerificationExpires: Date.now() + 24 * 60 * 60 * 1000,
       phone: '',
       isPhoneVerified: false,
       phonePromptDismissed: false,
       failedLoginAttempts: 0,
       lockoutUntil: null,
       wallet: {
-        balance: 500000, // $500,000 initial paper trading margin
+        balance: 500000,
         currency: 'USD',
       },
       notificationPreferences: {
@@ -158,10 +151,8 @@ router.post('/signup', authLimiter, async (req, res) => {
     store.users.push(newUser);
     saveStore();
 
-    // Trigger verification email via Nodemailer
     await notifyUser(newUser, 'EMAIL_VERIFICATION', { token: verifyCode });
 
-    // Send a welcome email immediately on signup (even before verification)
     await notifyUser(newUser, 'SIGNUP_WELCOME');
 
     res.status(201).json({
@@ -176,7 +167,6 @@ router.post('/signup', authLimiter, async (req, res) => {
   }
 });
 
-// ── 3. Email Verification Endpoint (/api/auth/verify-email) ────────────────
 router.post('/verify-email', async (req, res) => {
   const { email, token } = req.body;
 
@@ -214,20 +204,17 @@ router.post('/verify-email', async (req, res) => {
       return res.status(400).json({ message: 'Invalid verification code. Please check your email.' });
     }
 
-    // Mark as verified
     user.isEmailVerified = true;
     user.emailVerificationToken = null;
     user.emailVerificationExpires = null;
     user.lastLogin = Date.now();
 
-    // Send Welcome Email if not already sent during signup
     if (!user.welcomeEmailSent) {
       user.welcomeEmailSent = true;
       await notifyUser(user, 'WELCOME');
     }
     saveStore();
 
-    // Send Login Alert since this is effectively a login event
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'] || 'Web Browser';
     await notifyUser(user, 'LOGIN_ALERT', { ip: clientIp, userAgent });
@@ -253,7 +240,6 @@ router.post('/verify-email', async (req, res) => {
   }
 });
 
-// ── 4. Resend Verification Email (/api/auth/resend-verification) ───────────
 router.post('/resend-verification', authLimiter, async (req, res) => {
   const { email } = req.body;
 
@@ -265,7 +251,6 @@ router.post('/resend-verification', authLimiter, async (req, res) => {
     const normalizedEmail = email.trim().toLowerCase();
     const user = store.users.find(u => u.email === normalizedEmail);
 
-    // Standard generic message to avoid email enumeration
     const genericSuccess = { message: 'If an unverified account exists, a new verification code has been sent.' };
 
     if (!user || user.isEmailVerified) {
@@ -289,7 +274,6 @@ router.post('/resend-verification', authLimiter, async (req, res) => {
   }
 });
 
-// ── 5. Real Login With Verification & Rate-Limiting (/api/auth/login) ──────
 router.post('/login', authLimiter, async (req, res) => {
   const { email, password } = req.body;
 
@@ -305,7 +289,6 @@ router.post('/login', authLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials.' });
     }
 
-    // Check Lockout
     if (user.lockoutUntil && Date.now() < user.lockoutUntil) {
       const waitMins = Math.ceil((user.lockoutUntil - Date.now()) / 60000);
       return res.status(429).json({ message: `Account temporarily locked due to repeated failed logins. Please try again in ${waitMins} minutes.` });
@@ -315,14 +298,13 @@ router.post('/login', authLimiter, async (req, res) => {
     if (!isMatch) {
       user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
       if (user.failedLoginAttempts >= 5) {
-        user.lockoutUntil = Date.now() + 15 * 60 * 1000; // 15 minutes lockout
+        user.lockoutUntil = Date.now() + 15 * 60 * 1000;
         user.failedLoginAttempts = 0;
       }
       saveStore();
       return res.status(400).json({ message: 'Invalid credentials.' });
     }
 
-    // Check if email is verified
     if (!user.isEmailVerified) {
       const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
       user.emailVerificationToken = crypto.createHash('sha256').update(verifyCode).digest('hex');
@@ -339,17 +321,14 @@ router.post('/login', authLimiter, async (req, res) => {
       });
     }
 
-    // Reset failed counter
     user.failedLoginAttempts = 0;
     user.lockoutUntil = null;
     
-    // Generate 6-digit Login OTP for 2-Factor Email Authentication
     const loginOtp = Math.floor(100000 + Math.random() * 900000).toString();
     user.loginOtp = crypto.createHash('sha256').update(loginOtp).digest('hex');
-    user.loginOtpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    user.loginOtpExpires = Date.now() + 10 * 60 * 1000;
     saveStore();
 
-    // Send OTP to user's registered email
     await notifyUser(user, 'LOGIN_OTP', { otp: loginOtp });
 
     res.json({
@@ -364,7 +343,6 @@ router.post('/login', authLimiter, async (req, res) => {
   }
 });
 
-// ── 5.1 Verify Login OTP (/api/auth/verify-login-otp) ────────────────────────
 router.post('/verify-login-otp', authLimiter, async (req, res) => {
   const { email, otp } = req.body;
 
@@ -392,7 +370,6 @@ router.post('/verify-login-otp', authLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Invalid verification code. Please check your email.' });
     }
 
-    // Success! Clear OTP and mark logged in
     user.loginOtp = null;
     user.loginOtpExpires = null;
     user.failedLoginAttempts = 0;
@@ -400,7 +377,6 @@ router.post('/verify-login-otp', authLimiter, async (req, res) => {
     user.lastLogin = Date.now();
     user.isEmailVerified = true;
 
-    // Send Welcome Email if not yet sent
     if (!user.welcomeEmailSent) {
       user.welcomeEmailSent = true;
       await notifyUser(user, 'WELCOME');
@@ -408,7 +384,6 @@ router.post('/verify-login-otp', authLimiter, async (req, res) => {
 
     saveStore();
 
-    // Trigger Login Notification Security Alert Email
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'] || 'Web Browser';
     await notifyUser(user, 'LOGIN_ALERT', { ip: clientIp, userAgent });
@@ -433,7 +408,6 @@ router.post('/verify-login-otp', authLimiter, async (req, res) => {
   }
 });
 
-// ── 5.2 Resend Login OTP (/api/auth/resend-login-otp) ────────────────────────
 router.post('/resend-login-otp', otpLimiter, async (req, res) => {
   const { email } = req.body;
   if (!email) {
@@ -466,12 +440,10 @@ router.post('/resend-login-otp', otpLimiter, async (req, res) => {
   }
 });
 
-// ── 6. Google Sign-In Endpoint (/api/auth/google) ──────────────────────────
 router.post('/google', async (req, res) => {
   try {
     let email, name, googleId, picture;
 
-    // If frontend sends a Firebase ID token, verify it server-side
     if (req.body.idToken && admin.apps.length) {
       try {
         const decodedToken = await admin.auth().verifyIdToken(req.body.idToken);
@@ -484,7 +456,6 @@ router.post('/google', async (req, res) => {
         return res.status(401).json({ message: 'Invalid Google authentication token.' });
       }
     } else {
-      // Fallback: trust the body (for development without Firebase)
       email = req.body.email;
       name = req.body.name;
       googleId = req.body.googleId;
@@ -498,7 +469,6 @@ router.post('/google', async (req, res) => {
     let user = store.users.find(u => u.email === normalizedEmail);
 
     if (!user) {
-      // First time Google OAuth user -> create account automatically verified
       user = {
         _id: crypto.randomUUID(),
         name: name.trim(),
@@ -539,7 +509,6 @@ router.post('/google', async (req, res) => {
     const token = generateToken(user._id);
     const isSecure = isSecureRequest(req);
 
-    // Trigger Login Notification for Google Auth
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'] || 'Web Browser';
     await notifyUser(user, 'LOGIN_ALERT', { ip: clientIp, userAgent });
@@ -564,7 +533,6 @@ router.post('/google', async (req, res) => {
   }
 });
 
-// ── 7. Password Recovery (/api/auth/forgot-password) ───────────────────────
 router.post('/forgot-password', authLimiter, async (req, res) => {
   const { email } = req.body;
 
@@ -581,7 +549,7 @@ router.post('/forgot-password', authLimiter, async (req, res) => {
 
     const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
     user.resetPasswordToken = crypto.createHash('sha256').update(resetCode).digest('hex');
-    user.resetPasswordExpires = Date.now() + 30 * 60 * 1000; // 30 minutes
+    user.resetPasswordExpires = Date.now() + 30 * 60 * 1000;
     saveStore();
 
     await notifyUser(user, 'PASSWORD_RESET', { resetToken: resetCode });
@@ -596,7 +564,6 @@ router.post('/forgot-password', authLimiter, async (req, res) => {
   }
 });
 
-// ── 8. Reset Password With Token (/api/auth/reset-password) ────────────────
 router.post('/reset-password', async (req, res) => {
   const { email, token, newPassword } = req.body;
 
@@ -639,7 +606,6 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-// ── 9. Mobile Phone Verification: Send OTP (/api/auth/phone/send-otp) ──────
 router.post('/phone/send-otp', protect, otpLimiter, async (req, res) => {
   const { phone } = req.body;
 
@@ -658,7 +624,6 @@ router.post('/phone/send-otp', protect, otpLimiter, async (req, res) => {
   }
 });
 
-// ── 10. Mobile Phone Verification: Confirm OTP (/api/auth/phone/verify-otp) ─
 router.post('/phone/verify-otp', protect, async (req, res) => {
   const { otp } = req.body;
 
@@ -680,7 +645,6 @@ router.post('/phone/verify-otp', protect, async (req, res) => {
   }
 });
 
-// ── 11. Dismiss Mobile Onboarding Prompt (/api/auth/phone/dismiss-prompt) ───
 router.post('/phone/dismiss-prompt', protect, async (req, res) => {
   try {
     const user = store.users.find(u => u._id === req.user._id);
@@ -694,7 +658,6 @@ router.post('/phone/dismiss-prompt', protect, async (req, res) => {
   }
 });
 
-// ── 12. Notification Preferences Centre (/api/auth/preferences) ───────────
 router.get('/preferences', protect, (req, res) => {
   const user = store.users.find(u => u._id === req.user._id);
   if (!user) return res.status(404).json({ message: 'User not found' });
@@ -742,7 +705,6 @@ router.put('/preferences', protect, (req, res) => {
   });
 });
 
-// ── 13. Notification History Log (/api/auth/notifications/history) ──────────
 router.get('/notifications/history', protect, (req, res) => {
   try {
     const logs = (store.notificationLogs || [])
@@ -756,7 +718,6 @@ router.get('/notifications/history', protect, (req, res) => {
   }
 });
 
-// ── 14. Logout (/api/auth/logout) ──────────────────────────────────────────
 router.post('/logout', (req, res) => {
   const isSecure = isSecureRequest(req);
   res.clearCookie('token', {
