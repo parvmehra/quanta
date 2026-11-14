@@ -174,3 +174,15 @@ Deviations from the plan (all small):
 - eslint config relaxed for three rules (unused catch variable, empty catch block, context-file export warning); real unused code was fixed rather than silenced.
 - Sidebar shows only routes that exist today; Dashboard, Market Overview, Watchlist, Orders, AI Advisor, Wallet, Settings appear when those pages are built.
 - Not done in Phase 1 (moved): the 15 remaining hook warnings; Google sign-in disabled until a Firebase config is supplied.
+
+**Phase 2 — done (2026-11-14).** Delivered:
+- Backend: `GET /api/market/overview` (5 indices) and `GET /api/market/movers?region=US|IN`. Every response carries `source`, `delayed`, `fetchedAt`; on provider failure they return `503 DATA_UNAVAILABLE` instead of estimated numbers. US movers come from Yahoo's predefined screeners filtered to market cap ≥ $2B; India movers rank a fixed list of the 50 NIFTY constituents (labelled as such in the response). 60 s / 2 min in-process cache, 120 req/min limiter.
+- Frontend: new `Dashboard` (`/dashboard`, default after login), `MarketOverview` (`/markets`) and `StockExplorer` (`/analyzer`, replaces the old screener page; `?q=` and the search API are preserved). Shared `DataTable` (sortable, missing values sort last, responsive column hiding), `Tabs`, `useFetch`, `useQuotes` hooks, `utils/format.js`.
+- Portfolio maths extracted to `utils/portfolioMath.js` with unit tests (weighted average cost, unpriced positions excluded from totals, currencies never summed). 13 unit tests pass.
+- Dashboard shows only data that exists: holdings, live P&L, allocation, movers, watchlist, wallet activity. There is **no portfolio-over-time chart** because no historical portfolio values are stored (needs the Phase 6A ledger).
+- Verified in a real browser at 1440 and 390 px: all routes, search, sort, filters, auth redirect, 0 console errors.
+
+Known limitations carried forward:
+- Wallet balance on the dashboard is the server value, which trades do not yet change (S1/S3); it will be correct after Phase 6A.
+- Watchlist is still browser-local until Phase 5.
+- Yahoo returned no quote for `TATAMOTORS.NS` (the company is now listed as `TMPV.NS` / `TMCV.NS`); lists were updated. Fixed symbol lists need occasional review.

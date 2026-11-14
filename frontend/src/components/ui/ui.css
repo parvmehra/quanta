@@ -28,3 +28,9 @@
 .q-state__text  { font-size: var(--fs-base); max-width: 46ch; }
 .q-state--error { color: var(--q-negative); }
 .q-state--error .q-state__text { color: var(--q-text-2); }
+
+.q-tabs { display: inline-flex; border: 1px solid var(--q-border); border-radius: var(--q-radius); overflow: hidden; }
+.q-tabs__tab { padding: 4px var(--sp-3); font-size: var(--fs-sm); font-weight: 500; color: var(--q-text-2); background: transparent; }
+.q-tabs__tab + .q-tabs__tab { border-left: 1px solid var(--q-border); }
+.q-tabs__tab:hover { color: var(--q-text); background: var(--q-surface-2); }
+.q-tabs__tab.is-active { color: var(--q-text); background: var(--q-surface-3); }

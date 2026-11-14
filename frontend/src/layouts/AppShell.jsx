@@ -3,7 +3,7 @@ import { NavLink, Link, Outlet, useLocation, useNavigate } from 'react-router-do
 import axios from 'axios';
 import {
   Search, Bell, Menu, PanelLeftClose, PanelLeftOpen, LogOut, UserRound,
-  LayoutList, CandlestickChart, Briefcase, HelpCircle, Info, X,
+  LayoutList, LayoutDashboard, Globe2, CandlestickChart, Briefcase, HelpCircle, Info, X,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -15,7 +15,11 @@ import './AppShell.css';
 
 // Only routes that exist today. New entries are added as each page is built.
 const NAV = [
+  { group: 'Overview', items: [
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, auth: true },
+  ]},
   { group: 'Markets', items: [
+    { to: '/markets', label: 'Market Overview', icon: Globe2 },
     { to: '/analyzer', label: 'Stock Explorer', icon: LayoutList },
   ]},
   { group: 'Trading', items: [

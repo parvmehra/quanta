@@ -78,7 +78,7 @@ const Signup = () => {
     try {
       await verifyEmail(email.trim(), verifyCode.trim());
       addNotification('Welcome to Quanta!', 'Your account has been verified successfully.', 'success');
-      navigate('/analyzer');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid or expired verification code.');
       addNotification('Verification Failed', err.response?.data?.message || 'Invalid code', 'error');
@@ -131,7 +131,7 @@ const Signup = () => {
       
       await googleLogin({ idToken });
       addNotification('Signed in with Google', 'Welcome to Quanta!', 'success');
-      navigate('/analyzer');
+      navigate('/dashboard');
     } catch (err) {
       console.error('Google Sign-Up error:', err);
       if (err.code === 'auth/popup-closed-by-user') {

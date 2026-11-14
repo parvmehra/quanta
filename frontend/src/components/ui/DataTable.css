@@ -1,0 +1,16 @@
+.dt-wrap { width: 100%; overflow-x: auto; }
+.dt { width: 100%; border-collapse: collapse; font-size: var(--fs-base); }
+.dt th, .dt td { padding: 9px var(--sp-3); text-align: left; white-space: nowrap; border-bottom: 1px solid var(--q-border); }
+.dt-dense th, .dt-dense td { padding: 6px 10px; }
+.dt thead th { font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--q-text-2); background: var(--q-surface); position: sticky; top: 0; }
+.dt tbody tr:hover td { background: var(--q-surface-2); }
+.dt tbody tr:last-child td { border-bottom: 0; }
+.dt-r { text-align: right !important; font-variant-numeric: tabular-nums; }
+.dt-sort { display: inline-flex; align-items: center; gap: 4px; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+.dt-sort:hover { color: var(--q-text); }
+.dt-sort__idle { opacity: 0.4; }
+.dt-empty { text-align: center !important; color: var(--q-text-2); padding: var(--sp-8) var(--sp-4) !important; white-space: normal !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 900px) { .dt-hide-md { display: none; } }
+@media (max-width: 600px) { .dt-hide-sm { display: none; } }
+@media (max-width: 1500px) { .dt-hide-lg { display: none; } }

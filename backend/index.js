@@ -10,6 +10,7 @@ import authRoutes from './routes/authRoutes.js';
 import protfolioRoutes from './routes/protfolioRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import walletRoutes from './routes/walletRoutes.js';
+import marketRoutes from './routes/marketRoutes.js';
 import { store, saveStore } from './dataStore.js';
 import cookieParser from "cookie-parser";
 import crypto from 'crypto';
@@ -71,6 +72,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/protfolio', protfolioRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/wallet', walletRoutes);
+app.use('/api/market', marketRoutes);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'quanta', time: Date.now() }));
 
 // ─── Live price broadcasting ────────────────────────────────────────

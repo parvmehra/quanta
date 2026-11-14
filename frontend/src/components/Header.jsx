@@ -58,7 +58,8 @@ const Header = () => {
   // Base navigation links visible to everyone
   const baseLinks = [
     { to: '/', label: 'Home' },
-    { to: '/analyzer', label: 'Analyzer' },
+    { to: '/markets', label: 'Markets' },
+    { to: '/analyzer', label: 'Explorer' },
     { to: '/about', label: 'About' },
   ];
 
@@ -66,7 +67,8 @@ const Header = () => {
   const navLinks = isAuthenticated
     ? [
         { to: '/', label: 'Home' },
-        { to: '/analyzer', label: 'Analyzer' },
+        { to: '/dashboard', label: 'Dashboard' },
+        { to: '/analyzer', label: 'Explorer' },
         { to: '/portfolio', label: 'Portfolio' },
         { to: '/faq', label: 'FAQ' },
         { to: '/about', label: 'About' },

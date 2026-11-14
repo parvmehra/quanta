@@ -60,7 +60,7 @@ const Login = () => {
         return;
       }
       addNotification('Success', 'Welcome back to Quanta', 'success');
-      navigate('/analyzer');
+      navigate('/dashboard');
     } catch (err) {
       const data = err.response?.data;
       if (data?.requiresVerification) {
@@ -93,7 +93,7 @@ const Login = () => {
     try {
       await verifyLoginOtp(email.trim(), loginOtpCode.trim());
       addNotification('Authenticated', 'Login successful! Security alert dispatched to your email.', 'success');
-      navigate('/analyzer');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid or expired verification code.');
     } finally {
@@ -143,7 +143,7 @@ const Login = () => {
     try {
       await verifyEmail(email.trim(), verifyCode.trim());
       addNotification('Email Verified', 'Your account is now active!', 'success');
-      navigate('/analyzer');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid or expired verification code.');
     } finally {
@@ -233,7 +233,7 @@ const Login = () => {
       
       await googleLogin({ idToken });
       addNotification('Signed in with Google', 'Welcome back!', 'success');
-      navigate('/analyzer');
+      navigate('/dashboard');
     } catch (err) {
       console.error('Google Sign-In error:', err);
       if (err.code === 'auth/popup-closed-by-user') {

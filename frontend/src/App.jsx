@@ -15,7 +15,9 @@ import Home from './pages/Home';
 import About from './pages/About';
 const Login = lazy(() => import('./pages/login'));
 const Signup = lazy(() => import('./pages/signup'));
-const StockAnalyzer = lazy(() => import('./pages/StockAnalyzer'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const MarketOverview = lazy(() => import('./pages/MarketOverview'));
+const StockExplorer = lazy(() => import('./pages/StockExplorer'));
 const StockDetails = lazy(() => import('./pages/StockDetails'));
 const TradingTerminal = lazy(() => import('./pages/TradingTerminal'));
 const Portfolio = lazy(() => import('./pages/Portfolio'));
@@ -61,7 +63,9 @@ function App() {
 
               {/* Application: sidebar shell */}
               <Route element={<AppShell />}>
-                <Route path="/analyzer" element={<StockAnalyzer />} />
+                <Route path="/dashboard" element={guard(<Dashboard />)} />
+                <Route path="/markets" element={<MarketOverview />} />
+                <Route path="/analyzer" element={<StockExplorer />} />
                 <Route path="/stock/:symbol" element={<StockDetails />} />
                 <Route path="/trade" element={guard(<TradingTerminal />)} />
                 <Route path="/trade/:symbol" element={guard(<TradingTerminal />)} />

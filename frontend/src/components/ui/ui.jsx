@@ -18,6 +18,26 @@ export function ChangeValue({ value, suffix = '%', digits = 2, className = '' })
   );
 }
 
+/** Segmented tabs. tabs: [{ id, label }] */
+export function Tabs({ tabs, value, onChange, label }) {
+  return (
+    <div className="q-tabs" role="tablist" aria-label={label}>
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          role="tab"
+          aria-selected={value === t.id}
+          className={`q-tabs__tab${value === t.id ? ' is-active' : ''}`}
+          onClick={() => onChange(t.id)}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function Badge({ tone = 'neutral', children }) {
   return <span className={`q-badge q-badge--${tone}`}>{children}</span>;
 }
