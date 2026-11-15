@@ -67,7 +67,7 @@ function IndexStrip() {
   }, []);
 
   return (
-    <div className="shell-ticker" aria-label="Market indices">
+    <div className="shell-ticker" role="region" aria-label="Index ticker">
       {state.status === 'loading' && <Skeleton width={260} height={12} />}
       {state.status === 'unavailable' && <span className="shell-ticker__na">Index data currently unavailable</span>}
       {state.status === 'ok' && state.indices.map((i) => (

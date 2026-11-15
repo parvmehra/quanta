@@ -19,7 +19,7 @@ const Footer = () => {
           </div>
 
           <div className="footer-section">
-            <h4>Markets</h4>
+            <h2>Markets</h2>
             <ul className="footer-links">
               <li><Link to="/markets">Market overview</Link></li>
               <li><Link to="/analyzer">Stock explorer</Link></li>
@@ -27,7 +27,7 @@ const Footer = () => {
           </div>
 
           <div className="footer-section">
-            <h4>Account</h4>
+            <h2>Account</h2>
             <ul className="footer-links">
               {isAuthenticated ? (
                 <>
@@ -44,7 +44,7 @@ const Footer = () => {
           </div>
 
           <div className="footer-section">
-            <h4>Help</h4>
+            <h2>Help</h2>
             <ul className="footer-links">
               <li><Link to="/faq">FAQ</Link></li>
               <li><Link to="/about">About</Link></li>

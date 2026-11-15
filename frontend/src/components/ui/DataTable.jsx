@@ -56,7 +56,7 @@ export default function DataTable({ columns, rows, rowKey, defaultSort, loading 
                       {c.label}
                       {active ? (sort.dir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ChevronsUpDown size={12} className="dt-sort__idle" />}
                     </button>
-                  ) : c.label}
+                  ) : (c.label || <span className="sr-only">{c.srLabel || 'Actions'}</span>)}
                 </th>
               );
             })}

@@ -111,7 +111,7 @@ function Terminal({ symbol }) {
       )}
 
       <div className="tt-grid">
-        <aside className="tt-left">
+        <aside className="tt-left" aria-label="Watchlist and movers">
           <section className="panel tt-search" aria-label="Find a stock">
             <div className="panel-body"><SymbolSearch fluid hotkey={false} onSelect={pick} placeholder="Find a stock to trade" /></div>
           </section>
@@ -199,7 +199,7 @@ function Terminal({ symbol }) {
           )}
         </div>
 
-        <aside className="tt-right">
+        <aside className="tt-right" aria-label="Order ticket">
           <OrderTicket symbol={symbol} quote={q} position={myPosition ? { quantity: myPosition.shares } : null} balances={balances} preset={preset} onDone={refreshAll} />
           <section className="panel" aria-label="Your position">
             <div className="panel-head"><h2 className="panel-title">Your position</h2></div>

@@ -160,7 +160,7 @@ const Signup = () => {
         {!isVerifying ? (
           <>
             <div className="auth-header">
-              <h2>Create Account</h2>
+              <h1>Create Account</h1>
               <p>Sign up to track real-time stocks, execute simulated trades, and analyze portfolios.</p>
             </div>
 
@@ -223,6 +223,7 @@ const Signup = () => {
                 <button
                   type="button"
                   className="auth-icon-btn"
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -275,7 +276,7 @@ const Signup = () => {
               <div className="verify-badge-icon">
                 <Mail size={26} color="#22c55e" />
               </div>
-              <h2>Verify your email</h2>
+              <h1>Verify your email</h1>
               <p>
                 We sent a 6-digit confirmation code to:
                 <br />

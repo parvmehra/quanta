@@ -4,7 +4,8 @@ import { Search } from 'lucide-react';
 import axiosInstance from '../utils/axiosInstance';
 import { displaySymbol, exchangeLabel } from '../utils/format';
 
-export default function SymbolSearch({ onSelect, fluid = false, hotkey = true, placeholder = 'Search symbol or company' }) {
+export default function SymbolSearch({ onSelect, fluid = false, hotkey = true, placeholder = 'Search symbol or company', searchLabel }) {
+  const label = searchLabel || (hotkey ? 'Search stocks' : 'Stock picker');
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -75,7 +76,7 @@ export default function SymbolSearch({ onSelect, fluid = false, hotkey = true, p
 
   return (
     <div className={`shell-search-wrap${fluid ? ' is-fluid' : ''}`} ref={wrapRef}>
-      <div className="shell-search" role="search">
+      <div className="shell-search" role="search" aria-label={label}>
         <Search size={15} aria-hidden="true" />
         <input
           ref={inputRef}

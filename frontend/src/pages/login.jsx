@@ -260,7 +260,7 @@ const Login = () => {
         {!isVerifying && !isForgotPassword && !isLoginOtp && (
           <>
             <div className="auth-header">
-              <h2>Welcome Back</h2>
+              <h1>Welcome Back</h1>
               <p>Enter your credentials to access your global portfolio.</p>
             </div>
 
@@ -359,7 +359,7 @@ const Login = () => {
               <div className="verify-badge-icon">
                 <KeyRound size={26} color="#22c55e" />
               </div>
-              <h2>Two-Step Verification</h2>
+              <h1>Two-Step Verification</h1>
               <p>
                 Enter the 6-digit login security code sent to:
                 <br />
@@ -437,7 +437,7 @@ const Login = () => {
               <div className="verify-badge-icon">
                 <Mail size={26} color="#22c55e" />
               </div>
-              <h2>Verify your email</h2>
+              <h1>Verify your email</h1>
               <p>
                 Enter the 6-digit confirmation code sent to:
                 <br />
@@ -504,7 +504,7 @@ const Login = () => {
         {isForgotPassword && (
           <div className="forgot-view animate-fade-in">
             <div className="auth-header">
-              <h2>Password Recovery</h2>
+              <h1>Password Recovery</h1>
               <p>
                 {forgotStep === 1
                   ? 'Enter your registered email address to receive a recovery authorization code.'

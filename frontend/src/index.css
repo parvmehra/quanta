@@ -241,3 +241,5 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
     transition-duration: 0.01ms !important;
   }
 }
+
+p > a:not(.btn), a.shell-link-btn { text-decoration: underline; text-underline-offset: 2px; }
