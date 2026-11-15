@@ -156,6 +156,20 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
+  const updateProfile = async (name) => {
+    const res = await axiosInstance.patch('/api/auth/profile', { name });
+    if (res.data.user) setUser(res.data.user);
+    return res.data;
+  };
+
+  const changePassword = async (currentPassword, newPassword) => {
+    const res = await axiosInstance.post('/api/auth/change-password', { currentPassword, newPassword });
+    if (res.data.token) {
+      try { localStorage.setItem('token', res.data.token); } catch { }
+    }
+    return res.data;
+  };
+
   const logout = async () => {
     try {
       await axiosInstance.post('/api/auth/logout');
@@ -186,6 +200,8 @@ export const AuthProvider = ({ children }) => {
         verifyEmail,
         resendVerification,
         googleLogin,
+        updateProfile,
+        changePassword,
         sendPhoneOtp,
         verifyPhoneOtp,
         dismissPhonePrompt,

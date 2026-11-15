@@ -26,6 +26,8 @@ const Orders = lazy(() => import('./pages/Orders'));
 const Wallet = lazy(() => import('./pages/Wallet'));
 const AIAdvisor = lazy(() => import('./pages/AIAdvisor'));
 const Watchlist = lazy(() => import('./pages/Watchlist'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Notifications = lazy(() => import('./pages/Notifications'));
 const Profile = lazy(() => import('./pages/Profile'));
 const FAQ = lazy(() => import('./pages/FAQ'));
 import NotFound from './pages/NotFound';
@@ -77,6 +79,8 @@ function App() {
                 <Route path="/orders" element={guard(<Orders />)} />
                 <Route path="/advisor" element={guard(<AIAdvisor />)} />
                 <Route path="/watchlist" element={guard(<Watchlist />)} />
+                <Route path="/settings" element={guard(<Settings />)} />
+                <Route path="/notifications" element={guard(<Notifications />)} />
                 <Route path="/wallet" element={guard(<Wallet />)} />
                 <Route path="/profile" element={guard(<Profile />)} />
                 <Route path="/faq" element={<FAQ />} />

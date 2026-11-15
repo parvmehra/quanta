@@ -3,7 +3,7 @@ import { NavLink, Link, Outlet, useLocation, useNavigate } from 'react-router-do
 import axios from 'axios';
 import {
   Bell, Menu, PanelLeftClose, PanelLeftOpen, LogOut, UserRound,
-  LayoutList, LayoutDashboard, Globe2, CandlestickChart, ListChecks, Wallet, Sparkles, Eye, Briefcase, HelpCircle, Info, X,
+  LayoutList, LayoutDashboard, Globe2, CandlestickChart, ListChecks, Wallet, Sparkles, Eye, Settings, Briefcase, HelpCircle, Info, X,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -36,6 +36,7 @@ const NAV = [
   { group: 'Account', items: [
     { to: '/wallet', label: 'Wallet', icon: Wallet, auth: true },
     { to: '/profile', label: 'Profile', icon: UserRound, auth: true },
+    { to: '/settings', label: 'Settings', icon: Settings, auth: true },
   ]},
   { group: 'Help', items: [
     { to: '/faq', label: 'FAQ', icon: HelpCircle },
@@ -216,6 +217,7 @@ export default function AppShell() {
                       ))}
                     </ul>
                   )}
+                  <Link to="/notifications" className="shell-dropdown__foot">View all notifications</Link>
                 </div>
               )}
             </div>
@@ -233,6 +235,7 @@ export default function AppShell() {
                     </div>
                     <Link to="/profile" role="menuitem" className="shell-dropdown__item"><UserRound size={15} /> Profile</Link>
                     <Link to="/wallet" role="menuitem" className="shell-dropdown__item"><Wallet size={15} /> Wallet</Link>
+                    <Link to="/settings" role="menuitem" className="shell-dropdown__item"><Settings size={15} /> Settings</Link>
                     <button type="button" role="menuitem" className="shell-dropdown__item" onClick={handleLogout}><LogOut size={15} /> Log out</button>
                   </div>
                 )}

@@ -1,0 +1,31 @@
+.st-prefs { width: 100%; border-collapse: collapse; }
+.st-prefs th, .st-prefs td { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--q-border); text-align: left; vertical-align: middle; }
+.st-prefs thead th { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--q-text-2); font-weight: 600; }
+.st-prefs thead th:not(:first-child), .st-prefs td { text-align: center; width: 76px; }
+.st-prefs tbody th { font-weight: 400; display: table-cell; }
+.st-prefs tbody th strong { display: block; font-weight: 600; }
+.st-prefs tbody th small { display: block; color: var(--q-text-2); font-size: var(--fs-xs); }
+.st-prefs tbody tr:last-child th, .st-prefs tbody tr:last-child td { border-bottom: 0; }
+
+.st-switch { position: relative; width: 36px; height: 20px; border-radius: 999px; background: var(--q-surface-3); border: 1px solid var(--q-border-strong); transition: background var(--q-transition); }
+.st-switch span { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--q-text-2); transition: transform var(--q-transition), background var(--q-transition); }
+.st-switch.is-on { background: var(--q-info-bg); border-color: var(--q-info); }
+.st-switch.is-on span { transform: translateX(16px); background: var(--q-info); }
+.st-switch:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.st-note { display: flex; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--q-border); font-size: var(--fs-xs); color: var(--q-text-2); line-height: 1.5; }
+.st-note svg { flex: none; margin-top: 2px; }
+.st-note a { color: var(--q-info); }
+
+.st-form { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); }
+.st-field { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-sm); color: var(--q-text-2); }
+.st-pw { display: flex; align-items: center; border: 1px solid var(--q-border); border-radius: var(--q-radius); background: var(--q-surface-2); }
+.st-pw:focus-within { border-color: var(--q-info); }
+.st-pw input { flex: 1; min-width: 0; border: 0; background: transparent; box-shadow: none; }
+.st-pw input:focus { box-shadow: none; }
+.st-pw button { padding: 0 var(--sp-3); align-self: stretch; color: var(--q-text-3); }
+.st-pw button:hover { color: var(--q-text); }
+.st-rules { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); font-size: var(--fs-xs); color: var(--q-text-3); }
+.st-rules li.is-met { color: var(--q-positive); }
+.st-error { color: var(--q-negative); font-size: var(--fs-sm); }
+.st-session { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); font-size: var(--fs-base); color: var(--q-text-2); align-items: flex-start; }

@@ -411,3 +411,95 @@ test('the sparkline endpoint returns compact real price history and validates in
   assert.ok(r.data.sparklines.AAPL.closes.every((n) => typeof n === 'number' && n > 0));
   assert.strictEqual(r.data.sparklines.ZZZZNOPE, null, 'unavailable symbols are null, never invented');
 });
+
+test('profile: only the name can be changed, and it is validated', { skip }, async () => {
+  assert.strictEqual((await call('PATCH', '/api/auth/profile', { body: { name: 'Nobody' } })).status, 401);
+  const u = await registerAndLogin();
+  for (const name of ['', ' ', 'A', 'x'.repeat(101), { $ne: 1 }, 42, null]) {
+    assert.strictEqual((await call('PATCH', '/api/auth/profile', { token: u.token, body: { name } })).status, 400, JSON.stringify(name));
+  }
+  const ok = await call('PATCH', '/api/auth/profile', { token: u.token, body: { name: '  Priya   Sharma ', email: 'hijack@example.com', role: 'admin', isEmailVerified: false } });
+  assert.strictEqual(ok.status, 200);
+  assert.strictEqual(ok.data.user.name, 'Priya Sharma');
+  const doc = await User.findById(u.id).lean();
+  assert.strictEqual(doc.email, u.email, 'the email cannot be changed here');
+  assert.strictEqual(doc.role, 'user', 'the role cannot be changed here');
+  assert.strictEqual(doc.isEmailVerified, true);
+});
+
+test('changing the password checks the old one, enforces the rules, and signs out other sessions', { skip }, async () => {
+  assert.strictEqual((await call('POST', '/api/auth/change-password', { body: { currentPassword: 'a', newPassword: 'b' } })).status, 401);
+  const u = await registerAndLogin();
+  const attempt = (currentPassword, newPassword) => call('POST', '/api/auth/change-password', { token: u.token, body: { currentPassword, newPassword } });
+  assert.strictEqual((await attempt('WrongPass123', 'BrandNew12345')).status, 400, 'wrong current password');
+  assert.strictEqual((await attempt(PASSWORD, 'weak')).status, 400, 'weak new password');
+  assert.strictEqual((await attempt(PASSWORD, PASSWORD)).status, 400, 'same password');
+  assert.strictEqual((await attempt('', 'BrandNew12345')).status, 400, 'empty current password');
+  assert.strictEqual((await call('POST', '/api/auth/change-password', { token: u.token, body: { currentPassword: { $ne: 1 }, newPassword: 'BrandNew12345' } })).status, 400);
+  assert.strictEqual((await call('GET', '/api/auth/me', { token: u.token })).status, 200, 'failed attempts change nothing');
+
+  const ok = await attempt(PASSWORD, 'BrandNew12345');
+  assert.strictEqual(ok.status, 200);
+  assert.ok(ok.data.token);
+  assert.strictEqual((await call('GET', '/api/auth/me', { token: u.token })).status, 401, 'the old token stops working');
+  assert.strictEqual((await call('GET', '/api/auth/me', { token: ok.data.token })).status, 200, 'the new token works');
+  const ipAddr = ip();
+  assert.strictEqual((await call('POST', '/api/auth/login', { body: { email: u.email, password: PASSWORD }, ipAddr })).status, 400, 'old password no longer works');
+  assert.strictEqual((await call('POST', '/api/auth/login', { body: { email: u.email, password: 'BrandNew12345' }, ipAddr })).status, 200);
+});
+
+test('password change attempts are rate limited per account', { skip }, async () => {
+  const u = await registerAndLogin();
+  const statuses = [];
+  for (let i = 0; i < 9; i++) statuses.push((await call('POST', '/api/auth/change-password', { token: u.token, body: { currentPassword: 'WrongPass123', newPassword: 'BrandNew12345' } })).status);
+  assert.ok(statuses.includes(429), statuses.join(','));
+});
+
+test('a password reset also signs out existing sessions', { skip }, async () => {
+  const u = await registerAndLogin();
+  const ipAddr = ip();
+  const f = await call('POST', '/api/auth/forgot-password', { body: { email: u.email }, ipAddr });
+  assert.strictEqual((await call('POST', '/api/auth/reset-password', { body: { email: u.email, token: f.data.debugCode, newPassword: 'ResetPass12345' }, ipAddr })).status, 200);
+  assert.strictEqual((await call('GET', '/api/auth/me', { token: u.token })).status, 401, 'tokens issued before the reset are dead');
+});
+
+test('the notification history never contains one-time codes or reset tokens', { skip }, async () => {
+  const email = uniqueEmail();
+  const ipAddr = ip();
+  const codes = [];
+  const s = await call('POST', '/api/auth/signup', { body: { name: 'Api Tester', email, password: PASSWORD }, ipAddr });
+  codes.push(s.data.debugCode);
+  await call('POST', '/api/auth/verify-email', { body: { email, token: s.data.debugCode }, ipAddr });
+  const l = await call('POST', '/api/auth/login', { body: { email, password: PASSWORD }, ipAddr });
+  codes.push(l.data.debugCode);
+  const o = await call('POST', '/api/auth/verify-login-otp', { body: { email, otp: l.data.debugCode }, ipAddr });
+  const f = await call('POST', '/api/auth/forgot-password', { body: { email }, ipAddr });
+  codes.push(f.data.debugCode);
+  await wait(800);
+
+  const history = await call('GET', '/api/auth/notifications/history', { token: o.data.token });
+  assert.ok(Array.isArray(history.data) && history.data.length >= 3, 'logs exist');
+  const text = JSON.stringify(history.data);
+  for (const code of codes) assert.ok(!text.includes(code), `the code ${code} must not appear in the history`);
+  const stored = JSON.stringify(await NotificationLog.find({ recipient: email }).lean());
+  for (const code of codes) assert.ok(!stored.includes(code), `the code ${code} must not be stored in the database`);
+  assert.ok(history.data.some((e) => e.title === 'Login code sent'));
+  assert.ok(history.data.some((e) => e.title === 'Password reset code sent'));
+});
+
+test('notification history supports limit and cursor paging and is private', { skip }, async () => {
+  const a = await registerAndLogin();
+  const b = await registerAndLogin();
+  await wait(500);
+  const all = (await call('GET', '/api/auth/notifications/history?limit=100', { token: a.token })).data;
+  assert.ok(all.length >= 3);
+  const page1 = (await call('GET', '/api/auth/notifications/history?limit=2', { token: a.token })).data;
+  assert.strictEqual(page1.length, 2);
+  const page2 = (await call('GET', `/api/auth/notifications/history?limit=100&before=${page1[1].createdAt}`, { token: a.token })).data;
+  assert.ok(page2.every((e) => e.createdAt < page1[1].createdAt));
+  assert.strictEqual(page1.length + page2.length, all.length, 'paging does not skip or repeat entries');
+  const mine = new Set(all.map((e) => e._id));
+  const theirs = (await call('GET', '/api/auth/notifications/history?limit=100', { token: b.token })).data;
+  assert.ok(theirs.every((e) => !mine.has(e._id)), 'users never see each other\'s notifications');
+  assert.strictEqual((await call('GET', '/api/auth/notifications/history?limit=100000', { token: a.token })).data.length <= 100, true);
+});

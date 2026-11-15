@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema(
     failedLoginAttempts: { type: Number, default: 0 },
     lockoutUntil: { type: Number, default: null },
     lastLogin: { type: Number, default: null },
+    tokenVersion: { type: Number, default: 0 },
 
     resetPasswordToken: { type: String, default: null },
     resetPasswordExpires: { type: Number, default: null },

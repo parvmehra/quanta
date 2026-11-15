@@ -26,6 +26,7 @@ export const protect = async (req, res, next) => {
   try {
     const user = await User.findById(decoded.id).select('-password').lean();
     if (!user) return res.status(401).json({ message: 'Token failed' });
+    if ((decoded.tv ?? 0) !== (user.tokenVersion ?? 0)) return res.status(401).json({ message: 'Session expired. Please sign in again.' });
     req.user = user;
     next();
   } catch {

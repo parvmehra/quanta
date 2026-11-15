@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import NotificationLog from '../models/NotificationLog.js';
+import { safeLogContent } from '../utils/logSafe.js';
 
 let transporter = null;
 let isSimulated = false;
@@ -111,14 +112,15 @@ const emailFooter = `
 
 const logNotification = (userId, channel, eventType, recipient, title, message, status, referenceId = null) => {
   try {
+    const safe = safeLogContent(eventType, title, message);
     const log = {
       _id: crypto.randomUUID(),
       userId,
       channel,
       eventType,
       recipient,
-      title,
-      message,
+      title: safe.title,
+      message: safe.message,
       status,
       referenceId: referenceId || crypto.randomUUID(),
       createdAt: Date.now(),
@@ -597,4 +599,25 @@ export const sendPasswordResetEmail = async ({ toEmail, name, resetToken, userId
   `;
 
   return sendMail({ to: toEmail, subject, html, text, userId, eventType: 'PASSWORD_RESET' });
+};
+
+export const sendPasswordChangedEmail = async ({ toEmail, name, ip, userAgent, userId }) => {
+  const subject = 'Your Quanta password was changed';
+  const when = new Date().toUTCString();
+  const text = `Hi ${name},\n\nThe password for your Quanta account was changed on ${when}.\n\nIf this was you, no action is needed. If it was not you, reset your password immediately and review your account.\n\nBest regards,\nThe Quanta Team`;
+  const html = `
+    ${emailHeader(subject)}
+      <h1 class="h1">Password changed</h1>
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>The password for your Quanta account was changed on <strong>${when}</strong>. For your security, you were signed out of your other sessions.</p>
+      <div class="card-box">
+        <table class="table-details">
+          <tr><td class="label">Device</td><td class="val">${String(userAgent || 'Unknown').slice(0, 120)}</td></tr>
+          <tr><td class="label">Network address</td><td class="val">${String(ip || 'Unknown').slice(0, 60)}</td></tr>
+        </table>
+      </div>
+      <p style="font-size: 12px; color: #64748b;">If this was not you, reset your password right away.</p>
+    ${emailFooter}
+  `;
+  return sendMail({ to: toEmail, subject, html, text, userId, eventType: 'PASSWORD_CHANGED' });
 };

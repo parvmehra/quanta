@@ -143,3 +143,5 @@
 .shell-suggest__empty { color: var(--q-text-3); cursor: default !important; }
 .shell-suggest__all { color: var(--q-info); border-top: 1px solid var(--q-border); border-radius: 0 !important; margin-top: var(--sp-1); font-size: var(--fs-sm) !important; }
 .shell-search-wrap.is-fluid { width: 100%; }
+.shell-dropdown__foot { display: block; padding: var(--sp-3); text-align: center; border-top: 1px solid var(--q-border); color: var(--q-info); font-size: var(--fs-sm); }
+.shell-dropdown__foot:hover { background: var(--q-surface-2); }

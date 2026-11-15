@@ -31,7 +31,7 @@ const MAX_CODE_ATTEMPTS = 5;
 const debugOnly = (code) => (IS_PRODUCTION ? undefined : code);
 
 const isSecureRequest = (req) => IS_PRODUCTION || req.secure || req.headers['x-forwarded-proto'] === 'https';
-const generateToken = (userId) => jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '7d' });
+const generateToken = (user) => jwt.sign({ id: user._id, tv: user.tokenVersion || 0 }, JWT_SECRET, { expiresIn: '7d' });
 
 const setAuthCookie = (req, res, token) => {
   const secure = isSecureRequest(req);
@@ -65,6 +65,9 @@ const formatUserResponse = (user) => ({
   isPhoneVerified: !!user.isPhoneVerified,
   phonePromptDismissed: !!user.phonePromptDismissed,
   notificationPreferences: user.notificationPreferences,
+  createdAt: user.createdAt || null,
+  lastLogin: user.lastLogin || null,
+  hasGoogle: !!user.googleId,
 });
 
 const clientInfo = (req) => ({
@@ -179,7 +182,7 @@ router.post('/verify-email', verifyLimiter, async (req, res) => {
     await user.save();
     await notifyUser(user, 'LOGIN_ALERT', clientInfo(req));
 
-    const jwtToken = generateToken(user._id);
+    const jwtToken = generateToken(user);
     setAuthCookie(req, res, jwtToken);
     res.json({ message: 'Email verified successfully! Welcome to Quanta.', token: jwtToken, user: formatUserResponse(user) });
   } catch (err) {
@@ -295,7 +298,7 @@ router.post('/verify-login-otp', authLimiter, async (req, res) => {
     await user.save();
     await notifyUser(user, 'LOGIN_ALERT', clientInfo(req));
 
-    const token = generateToken(user._id);
+    const token = generateToken(user);
     setAuthCookie(req, res, token);
     res.json({ token, user: formatUserResponse(user) });
   } catch (err) {
@@ -367,7 +370,7 @@ router.post('/google', authLimiter, async (req, res) => {
       await user.save();
     }
 
-    const token = generateToken(user._id);
+    const token = generateToken(user);
     setAuthCookie(req, res, token);
     await notifyUser(user, 'LOGIN_ALERT', clientInfo(req));
 
@@ -431,6 +434,7 @@ router.post('/reset-password', verifyLimiter, async (req, res) => {
     }
 
     user.password = await bcrypt.hash(newPassword, 10);
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
     user.resetPasswordAttempts = 0;
@@ -517,9 +521,62 @@ router.put('/preferences', protect, async (req, res) => {
 
 router.get('/notifications/history', protect, async (req, res) => {
   try {
-    const logs = await NotificationLog.find({ userId: req.user._id }).sort({ createdAt: -1 }).limit(50).lean();
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100);
+    const filter = { userId: req.user._id };
+    const before = Number(req.query.before);
+    if (Number.isFinite(before) && before > 0) filter.createdAt = { $lt: before };
+    const logs = await NotificationLog.find(filter).sort({ createdAt: -1 }).limit(limit).lean();
     res.json(logs);
   } catch {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.patch('/profile', protect, async (req, res) => {
+  const name = typeof req.body?.name === 'string' ? req.body.name.replace(/\s+/g, ' ').trim() : '';
+  if (name.length < 2 || name.length > 100) return res.status(400).json({ message: 'Please enter a name between 2 and 100 characters.' });
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    user.name = name;
+    await user.save();
+    res.json({ message: 'Profile updated.', user: formatUserResponse(user) });
+  } catch {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+const passwordChangeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 6,
+  keyGenerator: (req) => req.user?._id || req.ip,
+  validate: { keyGeneratorIpFallback: false },
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many password attempts. Please try again later.' },
+});
+
+router.post('/change-password', protect, passwordChangeLimiter, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (typeof currentPassword !== 'string' || !currentPassword) return res.status(400).json({ message: 'Enter your current password.' });
+  const pwdError = validatePasswordStrength(newPassword);
+  if (pwdError) return res.status(400).json({ message: pwdError });
+  if (newPassword === currentPassword) return res.status(400).json({ message: 'Choose a password that is different from your current one.' });
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!(await bcrypt.compare(currentPassword, user.password))) return res.status(400).json({ message: 'Your current password is incorrect.' });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save();
+    await notifyUser(user, 'PASSWORD_CHANGED', clientInfo(req));
+
+    const token = generateToken(user);
+    setAuthCookie(req, res, token);
+    res.json({ message: 'Password updated. You were signed out of your other sessions.', token });
+  } catch (err) {
+    console.error('Change password error:', err.message);
     res.status(500).json({ message: 'Server error' });
   }
 });

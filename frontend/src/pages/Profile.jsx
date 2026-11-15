@@ -1,513 +1,141 @@
-import React, { useState, useEffect } from 'react';
-import {
-  User,
-  Mail,
-  Smartphone,
-  Shield,
-  Bell,
-  CheckCircle2,
-  AlertTriangle,
-  Wallet,
-  ArrowRight,
-  TrendingUp,
-  History,
-  Lock,
-  Save,
-  Loader2,
-  Plus,
-  Trash2,
-  ExternalLink,
-} from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useNotification } from '../contexts/NotificationContext';
-import axiosInstance from '../utils/axiosInstance';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Check, LogOut, Pencil, Smartphone, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import axiosInstance from '../utils/axiosInstance';
+import { useAuth } from '../contexts/AuthContext';
+import { useFetch } from '../hooks/useFetch';
+import DataTable from '../components/ui/DataTable';
+import { Badge, ErrorState } from '../components/ui/ui';
+import { apiMessage } from '../services/trading';
+import { displaySymbol, formatDateTime, formatPrice } from '../utils/format';
+import '../styles/workspace.css';
+import '../styles/stock.css';
 import './Profile.css';
 
-const Profile = () => {
-  const { user, setUser, updatePreferences, sendPhoneOtp, verifyPhoneOtp } = useAuth();
-  const { addNotification } = useNotification();
+const formatMember = (ts) => (ts ? new Date(ts).toLocaleDateString([], { month: 'long', year: 'numeric' }) : '—');
 
-  const [prefs, setPrefs] = useState({
-    email: { security: true, subscriptions: true, trades: true, wallet: true, market: false },
-    sms: { security: true, subscriptions: false, trades: true, wallet: true, market: false },
-  });
-  const [savingPrefs, setSavingPrefs] = useState(false);
+export default function Profile() {
+  const { user, updateProfile, logout, setShowPhonePrompt } = useAuth();
+  const navigate = useNavigate();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState('');
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const subs = useFetch('/api/stocks/subscriptions');
 
-  const [showPhoneModal, setShowPhoneModal] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [phoneOtp, setPhoneOtp] = useState('');
-  const [devOtp, setDevOtp] = useState(null);
-  const [otpStep, setOtpStep] = useState('SEND');
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [, setResendCooldown] = useState(0);
+  const startEdit = () => { setName(user?.name || ''); setError(null); setEditing(true); };
 
-  const [subscriptions, setSubscriptions] = useState([]);
-  const [notificationLogs, setNotificationLogs] = useState([]);
-  const [, setLoadingData] = useState(true);
-
-  useEffect(() => {
-    if (user?.notificationPreferences) {
-      setPrefs(user.notificationPreferences);
-    }
-    fetchProfileData();
-  }, [user]);
-
-  const fetchProfileData = async () => {
-    setLoadingData(true);
-    try {
-      const subsRes = await axiosInstance.get('/api/stocks/subscriptions');
-      setSubscriptions(subsRes.data || []);
-
-      const logsRes = await axiosInstance.get('/api/auth/notifications/history');
-      setNotificationLogs(logsRes.data || []);
-    } catch (err) {
-      console.warn('Failed to load profile aux data:', err.message);
-    } finally {
-      setLoadingData(false);
-    }
-  };
-
-  const handleTogglePref = (channel, key) => {
-    setPrefs((prev) => ({
-      ...prev,
-      [channel]: {
-        ...prev[channel],
-        [key]: !prev[channel][key],
-      },
-    }));
-  };
-
-  const handleSavePreferences = async () => {
-    setSavingPrefs(true);
-    try {
-      await updatePreferences(prefs);
-      toast.success('Notification preferences updated successfully!');
-      addNotification('Preferences Saved', 'Your alert settings have been synchronized.', 'success');
-    } catch (err) {
-      toast.error('Failed to update preferences.');
-    } finally {
-      setSavingPrefs(false);
-    }
-  };
-
-  const handleSendPhoneOtp = async (e) => {
+  const save = async (e) => {
     e.preventDefault();
-    if (!phoneNumber || !phoneNumber.startsWith('+')) {
-      toast.error('Please enter an international number in E.164 format (e.g. +14155552671)');
-      return;
-    }
-
-    setOtpLoading(true);
+    const clean = name.replace(/\s+/g, ' ').trim();
+    if (clean.length < 2) { setError('Enter at least 2 characters.'); return; }
+    if (clean === user.name) { setEditing(false); return; }
+    setSaving(true);
     try {
-      const res = await sendPhoneOtp(phoneNumber.trim());
-      toast.success(res.message || 'OTP code sent via SMS!');
-      if (res.debugOtp) {
-        setDevOtp(res.debugOtp);
-        setPhoneOtp(res.debugOtp);
-        toast(`Dev Mode OTP: ${res.debugOtp}`, { icon: '🔑', duration: 8000 });
-      }
-      setOtpStep('VERIFY');
-      setResendCooldown(60);
-      const timer = setInterval(() => {
-        setResendCooldown((p) => {
-          if (p <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return p - 1;
-        });
-      }, 1000);
+      await updateProfile(clean);
+      toast.success('Name updated');
+      setEditing(false);
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to send OTP');
+      setError(apiMessage(err));
     } finally {
-      setOtpLoading(false);
+      setSaving(false);
     }
   };
 
-  const handleVerifyPhoneOtp = async (e) => {
-    e.preventDefault();
-    if (!phoneOtp || phoneOtp.length !== 6) {
-      toast.error('Please enter the 6-digit verification code.');
-      return;
-    }
-
-    setOtpLoading(true);
+  const unsubscribe = async (symbol) => {
     try {
-      const res = await verifyPhoneOtp(phoneOtp.trim());
-      toast.success('Phone number verified successfully!');
-      setShowPhoneModal(false);
-      setOtpStep('SEND');
-      setPhoneOtp('');
-      if (res.user) setUser(res.user);
+      await axiosInstance.delete(`/api/stocks/subscriptions/${encodeURIComponent(symbol)}`);
+      toast.success(`Alerts off for ${displaySymbol(symbol)}`);
+      subs.refresh();
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Invalid code');
-    } finally {
-      setOtpLoading(false);
+      toast.error(apiMessage(err));
     }
   };
 
-  const handleUnsubscribeStock = async (symbol) => {
-    try {
-      await axiosInstance.delete(`/api/stocks/subscriptions/${symbol}`);
-      setSubscriptions((prev) => prev.filter((s) => s.symbol !== symbol));
-      toast.success(`Unsubscribed from ${symbol} alerts`);
-    } catch (err) {
-      toast.error('Failed to unsubscribe');
-    }
-  };
+  const handleLogout = async () => { await logout(); navigate('/'); };
+
+  if (!user) return null;
+
+  const columns = [
+    { key: 'symbol', label: 'Stock', render: (r) => <span className="sym"><Link to={`/stock/${encodeURIComponent(r.symbol)}`}>{displaySymbol(r.symbol)}</Link><small>{r.companyName}</small></span> },
+    { key: 'priceAtSubscription', label: 'Price when added', align: 'right', hideBelow: 'sm', render: (r) => (r.priceAtSubscription > 0 ? formatPrice(r.priceAtSubscription, r.symbol) : '—') },
+    { key: 'createdAt', label: 'Added', align: 'right', hideBelow: 'md', render: (r) => formatDateTime(r.createdAt) },
+    { key: 'actions', label: '', align: 'right', render: (r) => <button type="button" className="btn btn-secondary btn-sm" onClick={() => unsubscribe(r.symbol)}>Turn off</button> },
+  ];
 
   return (
-    <div className="profile-page">
-      <div className="profile-container animate-fade-in">
-        <div className="profile-header">
-          <div className="profile-header-left">
-            <div className="profile-avatar-wrap">
-              <User size={32} />
-            </div>
-            <div>
-              <h1 className="profile-title">{user?.name || 'Account Settings'}</h1>
-              <p className="profile-subtitle">{user?.email} • Member since {new Date(user?.createdAt || Date.now()).toLocaleDateString()}</p>
-            </div>
-          </div>
-
-          <div className="profile-header-badge">
-            <span className={`status-pill ${user?.isEmailVerified ? 'verified' : 'unverified'}`}>
-              <CheckCircle2 size={13} /> {user?.isEmailVerified ? 'Email Verified' : 'Unverified Email'}
-            </span>
-          </div>
+    <div className="pg">
+      <header className="pg-head">
+        <div>
+          <h1 className="pg-title">Profile</h1>
+          <p className="pg-sub">Your account details. Notification choices and your password are in <Link to="/settings" className="shell-link-btn">Settings</Link>.</p>
         </div>
+      </header>
 
-        <div className="profile-grid">
-          <div className="profile-col-left">
-            <div className="profile-card">
-              <h2 className="profile-card-title">
-                <Shield size={18} className="profile-icon-green" /> Security & Identity
-              </h2>
-
-              <div className="identity-rows">
-                <div className="identity-row">
-                  <div className="identity-info">
-                    <Mail size={16} className="identity-icon" />
-                    <div>
-                      <span className="identity-label">Email Address</span>
-                      <span className="identity-val">{user?.email}</span>
-                    </div>
-                  </div>
-                  <span className="badge-verified">
-                    <CheckCircle2 size={13} /> Verified
-                  </span>
-                </div>
-
-                <div className="identity-row">
-                  <div className="identity-info">
-                    <Smartphone size={16} className="identity-icon" />
-                    <div>
-                      <span className="identity-label">Mobile Phone (SMS Alerts)</span>
-                      <span className="identity-val">{user?.phone || 'No phone number added'}</span>
-                    </div>
-                  </div>
-                  {user?.isPhoneVerified ? (
-                    <span className="badge-verified">
-                      <CheckCircle2 size={13} /> Verified
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn-verify-phone"
-                      onClick={() => setShowPhoneModal(true)}
-                    >
-                      Verify Phone
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="profile-card">
-              <div className="pref-card-header">
-                <div>
-                  <h2 className="profile-card-title">
-                    <Bell size={18} className="profile-icon-green" /> Notification Preferences
-                  </h2>
-                  <p className="pref-card-sub">
-                    Configure multi-channel alerts independently for Nodemailer email and Twilio SMS.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="btn-save-prefs"
-                  onClick={handleSavePreferences}
-                  disabled={savingPrefs}
-                >
-                  {savingPrefs ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                  <span>Save</span>
-                </button>
-              </div>
-
-              <div className="pref-table">
-                <div className="pref-table-header">
-                  <span>Notification Event</span>
-                  <span className="text-center">Email</span>
-                  <span className="text-center">SMS</span>
-                </div>
-
-                <div className="pref-table-row">
-                  <div className="pref-row-desc">
-                    <strong>Account & Security Alerts</strong>
-                    <span>New sign-ins, password updates, and verification codes</span>
-                  </div>
-                  <div className="pref-toggle-wrap">
-                    <input
-                      type="checkbox"
-                      id="pref-email-sec"
-                      checked={prefs.email.security}
-                      onChange={() => handleTogglePref('email', 'security')}
-                    />
-                    <label htmlFor="pref-email-sec" />
-                  </div>
-                  <div className="pref-toggle-wrap">
-                    <input
-                      type="checkbox"
-                      id="pref-sms-sec"
-                      checked={prefs.sms.security}
-                      disabled={!user?.isPhoneVerified}
-                      onChange={() => handleTogglePref('sms', 'security')}
-                    />
-                    <label htmlFor="pref-sms-sec" title={!user?.isPhoneVerified ? 'Requires verified mobile number' : ''} />
-                  </div>
-                </div>
-
-                <div className="pref-table-row">
-                  <div className="pref-row-desc">
-                    <strong>Stock Subscription Alerts</strong>
-                    <span>Real-time price move notifications for followed stocks</span>
-                  </div>
-                  <div className="pref-toggle-wrap">
-                    <input
-                      type="checkbox"
-                      id="pref-email-sub"
-                      checked={prefs.email.subscriptions}
-                      onChange={() => handleTogglePref('email', 'subscriptions')}
-                    />
-                    <label htmlFor="pref-email-sub" />
-                  </div>
-                  <div className="pref-toggle-wrap">
-                    <input
-                      type="checkbox"
-                      id="pref-sms-sub"
-                      checked={prefs.sms.subscriptions}
-                      disabled={!user?.isPhoneVerified}
-                      onChange={() => handleTogglePref('sms', 'subscriptions')}
-                    />
-                    <label htmlFor="pref-sms-sub" title={!user?.isPhoneVerified ? 'Requires verified mobile number' : ''} />
-                  </div>
-                </div>
-
-                <div className="pref-table-row">
-                  <div className="pref-row-desc">
-                    <strong>Trade Executions</strong>
-                    <span>Order confirmations for executed BUY and SELL trades</span>
-                  </div>
-                  <div className="pref-toggle-wrap">
-                    <input
-                      type="checkbox"
-                      id="pref-email-trades"
-                      checked={prefs.email.trades}
-                      onChange={() => handleTogglePref('email', 'trades')}
-                    />
-                    <label htmlFor="pref-email-trades" />
-                  </div>
-                  <div className="pref-toggle-wrap">
-                    <input
-                      type="checkbox"
-                      id="pref-sms-trades"
-                      checked={prefs.sms.trades}
-                      disabled={!user?.isPhoneVerified}
-                      onChange={() => handleTogglePref('sms', 'trades')}
-                    />
-                    <label htmlFor="pref-sms-trades" title={!user?.isPhoneVerified ? 'Requires verified mobile number' : ''} />
-                  </div>
-                </div>
-
-                <div className="pref-table-row">
-                  <div className="pref-row-desc">
-                    <strong>Wallet activity</strong>
-                    <span>Top-up confirmations, refunds, and transaction receipts</span>
-                  </div>
-                  <div className="pref-toggle-wrap">
-                    <input
-                      type="checkbox"
-                      id="pref-email-wallet"
-                      checked={prefs.email.wallet}
-                      onChange={() => handleTogglePref('email', 'wallet')}
-                    />
-                    <label htmlFor="pref-email-wallet" />
-                  </div>
-                  <div className="pref-toggle-wrap">
-                    <input
-                      type="checkbox"
-                      id="pref-sms-wallet"
-                      checked={prefs.sms.wallet}
-                      disabled={!user?.isPhoneVerified}
-                      onChange={() => handleTogglePref('sms', 'wallet')}
-                    />
-                    <label htmlFor="pref-sms-wallet" title={!user?.isPhoneVerified ? 'Requires verified mobile number' : ''} />
-                  </div>
-                </div>
-              </div>
+      <div className="pg-grid pg-grid--2">
+        <section className="panel" aria-label="Personal details">
+          <div className="panel-head"><h2 className="panel-title">Personal details</h2></div>
+          <div className="pf-who">
+            <span className="pf-avatar" aria-hidden="true">{(user.name || user.email || '?').trim().charAt(0).toUpperCase()}</span>
+            <div className="pf-who__text">
+              <strong>{user.name}</strong>
+              <span>{user.email}</span>
             </div>
           </div>
-
-          <div className="profile-col-right">
-            <div className="profile-card profile-wallet-card">
-              <div className="wallet-card-header">
-                <div>
-                  <span className="wallet-sub-title">Simulated wallet</span>
-                  <p style={{ color: 'var(--q-text-2)', fontSize: 'var(--fs-sm)', marginTop: 6 }}>
-                    Your balances, deposits and full transaction history are on the Wallet page. All funds are simulated.
-                  </p>
-                </div>
-                <Link to="/wallet" className="btn-topup-wallet">Open wallet</Link>
-              </div>
+          <dl className="sd-facts sd-facts--pad">
+            <div className="sd-row">
+              <dt>Name</dt>
+              <dd>
+                {editing ? (
+                  <form className="pf-edit" onSubmit={save}>
+                    <input value={name} maxLength={100} onChange={(e) => { setName(e.target.value); setError(null); }} aria-label="Your name" />
+                    <button type="submit" className="btn btn-accent btn-sm" disabled={saving} aria-label="Save name"><Check size={14} /></button>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditing(false)} aria-label="Cancel"><X size={14} /></button>
+                  </form>
+                ) : (
+                  <span className="pf-inline">{user.name} <button type="button" className="shell-link-btn" onClick={startEdit}><Pencil size={12} /> Edit</button></span>
+                )}
+                {error && <span className="pf-error" role="alert">{error}</span>}
+              </dd>
             </div>
-
-            <div className="profile-card">
-              <h2 className="profile-card-title">
-                <TrendingUp size={18} className="profile-icon-green" /> Active Stock Subscriptions
-              </h2>
-
-              {subscriptions.length === 0 ? (
-                <div className="empty-subs-box">
-                  <p>You have not subscribed to any stocks yet.</p>
-                  <Link to="/analyzer" className="link-green">
-                    Browse Screener to Follow Stocks →
-                  </Link>
-                </div>
-              ) : (
-                <div className="subs-list">
-                  {subscriptions.map((sub) => (
-                    <div key={sub._id} className="sub-item">
-                      <div className="sub-info">
-                        <Link to={`/stock/${sub.symbol}`} className="sub-sym">
-                          {sub.symbol} <ExternalLink size={12} />
-                        </Link>
-                        <span className="sub-company">{sub.companyName}</span>
-                      </div>
-                      <div className="sub-actions">
-                        <span className="sub-price">${Number(sub.priceAtSubscription).toFixed(2)}</span>
-                        <button
-                          type="button"
-                          className="btn-unsub"
-                          title="Unsubscribe"
-                          onClick={() => handleUnsubscribeStock(sub.symbol)}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div className="sd-row"><dt>Email</dt><dd><span className="pf-inline">{user.email} <Badge tone={user.isEmailVerified ? 'positive' : 'warning'}>{user.isEmailVerified ? 'Verified' : 'Not verified'}</Badge></span></dd></div>
+            <div className="sd-row">
+              <dt>Mobile</dt>
+              <dd>
+                <span className="pf-inline">
+                  {user.phone || 'Not added'} {user.phone && <Badge tone={user.isPhoneVerified ? 'positive' : 'warning'}>{user.isPhoneVerified ? 'Verified' : 'Not verified'}</Badge>}
+                  {!user.isPhoneVerified && <button type="button" className="shell-link-btn" onClick={() => setShowPhonePrompt(true)}><Smartphone size={12} /> {user.phone ? 'Verify' : 'Add number'}</button>}
+                </span>
+              </dd>
             </div>
+            <div className="sd-row"><dt>Member since</dt><dd>{formatMember(user.createdAt)}</dd></div>
+            <div className="sd-row"><dt>Last sign-in</dt><dd>{user.lastLogin ? formatDateTime(user.lastLogin) : '—'}</dd></div>
+            <div className="sd-row"><dt>Sign-in method</dt><dd>{user.hasGoogle ? 'Google or email and password' : 'Email and password with a login code'}</dd></div>
+          </dl>
+          <div className="panel-note">Your email address cannot be changed yet. Your mobile number is only used for the alerts you turn on in Settings.</div>
+        </section>
 
-            <div className="profile-card">
-              <h2 className="profile-card-title">
-                <History size={18} className="profile-icon-green" /> Delivery Activity Log
-              </h2>
-
-              {notificationLogs.length === 0 ? (
-                <div className="empty-subs-box">
-                  <p>No notifications delivered yet.</p>
-                </div>
-              ) : (
-                <div className="logs-list">
-                  {notificationLogs.slice(0, 5).map((log) => (
-                    <div key={log._id} className="log-item">
-                      <div className="log-icon-channel">
-                        {log.channel === 'sms' ? <Smartphone size={15} color="#3b82f6" /> : <Mail size={15} color="#22c55e" />}
-                      </div>
-                      <div className="log-details">
-                        <div className="log-title-row">
-                          <span className="log-title">{log.title}</span>
-                          <span className={`log-status ${log.status.toLowerCase()}`}>{log.status}</span>
-                        </div>
-                        <span className="log-time">
-                          {new Date(log.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <section className="panel" aria-label="Account shortcuts">
+          <div className="panel-head"><h2 className="panel-title">Account</h2></div>
+          <ul className="pf-links">
+            <li><Link to="/wallet">Wallet and transaction history</Link><span>Simulated funds only</span></li>
+            <li><Link to="/settings">Settings</Link><span>Notifications and password</span></li>
+            <li><Link to="/notifications">Notifications</Link><span>In-app messages and email and SMS log</span></li>
+            <li><Link to="/orders">Orders</Link><span>Open and past simulated orders</span></li>
+          </ul>
+          <div className="pf-logout"><button type="button" className="btn btn-secondary btn-sm" onClick={handleLogout}><LogOut size={14} /> Log out</button></div>
+        </section>
       </div>
 
-      {showPhoneModal && (
-        <div className="profile-modal-overlay">
-          <div className="profile-modal-card">
-            <h3>Verify Mobile Number</h3>
-            <p>Enter your international mobile number to receive instant SMS alerts.</p>
-
-            {otpStep === 'SEND' ? (
-              <form onSubmit={handleSendPhoneOtp}>
-                <div className="modal-input-group">
-                  <label>International Mobile Phone (E.164)</label>
-                  <input
-                    type="tel"
-                    placeholder="+14155552671 or +919876543210"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="modal-actions">
-                  <button type="button" className="btn-modal-cancel" onClick={() => setShowPhoneModal(false)}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn-modal-submit" disabled={otpLoading}>
-                    {otpLoading ? <Loader2 size={16} className="animate-spin" /> : 'Send Code'}
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleVerifyPhoneOtp}>
-                {devOtp && (
-                  <div style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', color: '#22c55e', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => setPhoneOtp(devOtp)}>
-                    <span>🔑 Dev Mode OTP: <strong>{devOtp}</strong> (Click to autofill)</span>
-                  </div>
-                )}
-                <div className="modal-input-group">
-                  <label>6-digit Code sent to {phoneNumber}</label>
-                  <input
-                    type="text"
-                    maxLength={6}
-                    placeholder="123456"
-                    value={phoneOtp}
-                    onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, ''))}
-                    className="modal-otp-input"
-                    required
-                  />
-                </div>
-                <div className="modal-actions">
-                  <button type="button" className="btn-modal-cancel" onClick={() => setOtpStep('SEND')}>
-                    Change Number
-                  </button>
-                  <button type="submit" className="btn-modal-submit" disabled={otpLoading || phoneOtp.length !== 6}>
-                    {otpLoading ? <Loader2 size={16} className="animate-spin" /> : 'Verify Code'}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-
+      <section className="panel" aria-label="Price alerts">
+        <div className="panel-head"><h2 className="panel-title">Price alerts</h2><span className="pg-meta">Turn alerts on from any stock page</span></div>
+        {subs.error && !subs.data ? (
+          <ErrorState title="Could not load your alerts" onRetry={subs.refresh}>{subs.error}</ErrorState>
+        ) : (
+          <DataTable columns={columns} rows={subs.data || []} rowKey={(r) => r._id} loading={subs.loading && !subs.data} empty="You have no price alerts. Open a stock and choose Alerts to follow it." skeletonRows={2} dense />
+        )}
+      </section>
     </div>
   );
-};
-
-export default Profile;
+}

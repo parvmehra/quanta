@@ -8,6 +8,7 @@ import {
   sendTradeConfirmationEmail,
   sendWalletTopupEmail,
   sendPasswordResetEmail,
+  sendPasswordChangedEmail,
 } from './emailService.js';
 import {
   sendStockSubscriptionSMS,
@@ -137,6 +138,16 @@ export const notifyUser = async (user, eventType, data = {}) => {
             userId: user._id,
           });
         }
+        break;
+
+      case 'PASSWORD_CHANGED':
+        results.email = await sendPasswordChangedEmail({
+          toEmail: user.email,
+          name: user.name,
+          ip: data.ip,
+          userAgent: data.userAgent,
+          userId: user._id,
+        });
         break;
 
       case 'PASSWORD_RESET':

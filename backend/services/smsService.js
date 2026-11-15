@@ -2,6 +2,7 @@ import 'dotenv/config';
 import twilio from 'twilio';
 import crypto from 'crypto';
 import NotificationLog from '../models/NotificationLog.js';
+import { safeLogContent } from '../utils/logSafe.js';
 import { IS_PRODUCTION } from '../config/env.js';
 import { sixDigitCode, hashCode, safeEqualHex } from '../utils/codes.js';
 
@@ -45,7 +46,7 @@ const logSms = (userId, eventType, recipient, message, status, referenceId = nul
       eventType,
       recipient,
       title: 'SMS Alert',
-      message,
+      message: safeLogContent(eventType, 'SMS Alert', message).message,
       status,
       referenceId: referenceId || crypto.randomUUID(),
       createdAt: Date.now(),
