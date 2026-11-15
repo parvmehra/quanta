@@ -225,6 +225,7 @@ function StockPage({ symbol }) {
           <button type="button" className={`btn btn-secondary btn-sm${alertsOn ? ' is-on' : ''}`} onClick={onAlerts} aria-pressed={alertsOn}>
             {alertsOn ? <BellOff size={14} /> : <Bell size={14} />} {alertsOn ? 'Alerts on' : 'Alerts'}
           </button>
+          <Link to={`/advisor?symbol=${enc}`} className="btn btn-secondary btn-sm">Ask AI</Link>
           <Link to={`/trade/${enc}`} className="btn btn-accent btn-sm">Trade</Link>
         </div>
       </header>

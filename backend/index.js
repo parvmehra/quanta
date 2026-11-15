@@ -11,6 +11,7 @@ import tradingRoutes from './routes/tradingRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import walletRoutes from './routes/walletRoutes.js';
 import marketRoutes from './routes/marketRoutes.js';
+import advisorRoutes from './routes/advisorRoutes.js';
 import connectDB, { isDbReady } from './config/connectDB.js';
 import { runMatcher } from './services/tradeService.js';
 import jwt from 'jsonwebtoken';
@@ -71,6 +72,7 @@ app.use('/api', tradingRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/market', marketRoutes);
+app.use('/api/advisor', advisorRoutes);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'quanta', time: Date.now() }));
 
 const POLL_INTERVAL_MS = 15 * 1000;

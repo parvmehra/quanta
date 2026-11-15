@@ -22,7 +22,7 @@ export function useFetch(url, { interval = 0, enabled = true } = {}) {
 
   useEffect(() => {
     aliveRef.current = true;
-    setState((s) => ({ ...s, loading: Boolean(url && enabled) && s.data === null }));
+    setState((s) => ({ ...s, error: null, loading: Boolean(url && enabled) && s.data === null }));
     load();
     let id;
     if (interval > 0 && enabled) id = setInterval(() => { if (!document.hidden) load(); }, interval);

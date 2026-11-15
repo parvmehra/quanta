@@ -5,7 +5,7 @@
 .sd-head__price { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .sd-price { font-size: var(--fs-2xl); font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .sd-chg { display: inline-flex; gap: var(--sp-3); font-size: var(--fs-md); }
-.sd-head__actions { display: flex; gap: var(--sp-2); align-items: center; }
+.sd-head__actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
 .btn.is-on { border-color: var(--q-info); color: var(--q-info); }
 
 .sd-tabs { display: flex; gap: var(--sp-1); border-bottom: 1px solid var(--q-border); overflow-x: auto; scrollbar-width: none; }

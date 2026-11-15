@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { searchStocks, getStockQuote, getStockNews, getStockHistory, clearCache, getMarketPulse, getBatchQuotes, getStockAdvisorResponse } from '../controllers/stockControllers.js';
+import { searchStocks, getStockQuote, getStockNews, getStockHistory, clearCache, getMarketPulse, getBatchQuotes } from '../controllers/stockControllers.js';
 import { getChart, getFundamentals } from '../controllers/stockDataController.js';
 import { protect, requireAdmin } from '../middlewares/auth.js';
 import Subscription from '../models/Subscription.js';
@@ -12,15 +12,6 @@ const router = express.Router();
 
 const limit = (max, message) => rateLimit({ windowMs: 60 * 1000, max, standardHeaders: true, legacyHeaders: false, message: { message } });
 const dataLimiter = limit(90, 'Too many requests. Please slow down.');
-const advisorLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 15,
-  keyGenerator: (req) => req.user?._id || req.ip,
-  validate: { keyGeneratorIpFallback: false },
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Too many AI requests. Please wait a moment.' },
-});
 
 router.get('/search', searchStocks);
 router.get('/quotes', getBatchQuotes);
@@ -31,7 +22,6 @@ router.get('/chart/:symbol', dataLimiter, getChart);
 router.get('/fundamentals/:symbol', dataLimiter, getFundamentals);
 router.get('/market-pulse', getMarketPulse);
 
-router.post('/advisor', protect, advisorLimiter, getStockAdvisorResponse);
 router.post('/cache/clear', protect, requireAdmin, clearCache);
 
 const cleanSymbol = (raw) => {

@@ -64,7 +64,7 @@ before(async () => {
     try {
       const r = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       if (r.status !== 503) return;
-    } catch { /* not up yet */ }
+    } catch { }
     await wait(500);
   }
   throw new Error('test server did not start');
@@ -87,9 +87,10 @@ after(async () => {
 
 test('public endpoints are open and protected ones require a login', { skip }, async () => {
   assert.strictEqual((await call('GET', '/api/health')).status, 200);
+  assert.strictEqual((await call('POST', '/api/stocks/advisor', { body: {} })).status, 404, 'the old unauthenticated advisor route is gone');
   for (const [m, p] of [
     ['GET', '/api/orders'], ['POST', '/api/orders'], ['GET', '/api/positions'], ['GET', '/api/ledger'], ['GET', '/api/wallet'], ['POST', '/api/wallet/topup'],
-    ['POST', '/api/portfolio/import'], ['POST', '/api/stocks/advisor'], ['POST', '/api/stocks/cache/clear'], ['GET', '/api/stocks/subscriptions'],
+    ['POST', '/api/portfolio/import'], ['POST', '/api/advisor/chat'], ['GET', '/api/advisor/context/AAPL'], ['POST', '/api/stocks/cache/clear'], ['GET', '/api/stocks/subscriptions'],
     ['GET', '/api/chat/admin/rooms'], ['GET', '/api/chat/some-room'], ['GET', '/api/auth/me'],
   ]) {
     const r = await call(m, p, { body: m === 'POST' ? {} : undefined });

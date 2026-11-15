@@ -1,6 +1,5 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
-import { getGeminiAdvisorResponse } from '../services/geminiAdvisorService.js';
 import yahooFinancePkg from 'yahoo-finance2';
 const yahooFinance = typeof yahooFinancePkg === 'function' ? new yahooFinancePkg() : yahooFinancePkg;
 
@@ -606,35 +605,5 @@ export const getBatchQuotes = async (req, res) => {
     } catch (err) {
         console.error('Batch quotes error:', err.message);
         res.status(500).json({ message: 'Failed to fetch batch quotes' });
-    }
-};
-
-export const getStockAdvisorResponse = async (req, res) => {
-    const { symbol, message, history, context } = req.body;
-    if (!symbol) {
-        return res.status(400).json({ message: 'Stock symbol is required.' });
-    }
-
-    try {
-        let enrichedContext = { ...(context || {}) };
-        const symLower = symbol.toLowerCase();
-        
-        if (!enrichedContext.price && cache.quote[symLower]?.data) {
-            enrichedContext = { ...cache.quote[symLower].data, ...enrichedContext };
-        }
-
-        const advisorResult = await getGeminiAdvisorResponse({
-            symbol,
-            message: message || `Analyze ${symbol}`,
-            history: history || [],
-            context: enrichedContext,
-        });
-
-        res.status(200).json(advisorResult);
-    } catch (err) {
-        console.error(`AI Advisor error for ${symbol}:`, err.message);
-        res.status(500).json({ 
-            message: 'Failed to generate advisory response'
-        });
     }
 };

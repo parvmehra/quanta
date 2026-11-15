@@ -184,7 +184,10 @@ function Terminal({ symbol }) {
                 </>
               ) : lq.error ? <span className="negative">Price unavailable</span> : <Skeleton width={150} height={30} />}
             </div>
-            <Link to={`/stock/${encodeURIComponent(symbol)}`} className="btn btn-secondary btn-sm">Analysis</Link>
+            <span style={{ display: 'inline-flex', gap: 'var(--sp-2)' }}>
+              <Link to={`/advisor?symbol=${encodeURIComponent(symbol)}`} className="btn btn-secondary btn-sm">Ask AI</Link>
+              <Link to={`/stock/${encodeURIComponent(symbol)}`} className="btn btn-secondary btn-sm">Analysis</Link>
+            </span>
           </section>
 
           {lq.error && !q ? (
