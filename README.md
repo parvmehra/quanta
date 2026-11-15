@@ -51,10 +51,11 @@ The backend tests use `MONGO_DB_URI` from `backend/.env` and remove the data the
 ## Documentation
 
 - `docs/ARCHITECTURE.md`: how the pieces fit together.
+- `docs/DEPLOYMENT.md`: deploying to Render and MongoDB Atlas (`render.yaml` at the repository root).
 - `docs/TRADING_ENGINE.md`: money rules, order lifecycle and the API.
 - `docs/IMPLEMENTATION_PLAN.md`: decisions and progress log.
 - `docs/PROJECT_AUDIT.md`: the original audit of the codebase.
 
 ## Limits
 
-Single server instance with in-process live-price polling and order matching; not suited to serverless hosting. No account deletion, CI workflow or production deployment configuration yet.
+Single server instance with in-process live-price polling and order matching; not suited to serverless hosting. No account deletion or CI workflow yet.

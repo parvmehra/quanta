@@ -80,4 +80,4 @@ Every 20 seconds, if the database is ready, resting limit and stop orders are ch
 - Market data is from an unofficial Yahoo Finance interface and can be delayed or briefly unavailable.
 - The order matcher and live-price poller run inside the web process, so the server needs to be long-running (not serverless) and runs one instance.
 - Firebase is used only for Google sign-in. `npm audit` reports advisories in its Firestore/gRPC dependencies, which the app never loads.
-- No account deletion, no CI workflow and no production deployment configuration yet.
+- No account deletion and no CI workflow yet. Deployment steps are in `DEPLOYMENT.md`.
