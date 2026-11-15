@@ -6,7 +6,7 @@ import axiosInstance from '../utils/axiosInstance';
 import { useFetch } from '../hooks/useFetch';
 import SymbolSearch from '../components/SymbolSearch';
 import { Badge, ChangeValue, ErrorState, Skeleton } from '../components/ui/ui';
-import { isInWatchlist, toggleWatchlist } from '../utils/watchlist';
+import { useWatchlist } from '../contexts/WatchlistContext';
 import { apiMessage } from '../services/trading';
 import { displaySymbol, formatDateTime, formatMarketCap, formatPrice, formatTime, NA } from '../utils/format';
 import '../styles/workspace.css';
@@ -82,11 +82,11 @@ export default function AIAdvisor() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const [watching, setWatching] = useState(false);
+  const wl = useWatchlist();
+  const watching = symbol ? wl.isWatching(symbol) : false;
   const endRef = useRef(null);
   const ctx = useFetch(symbol ? `/api/advisor/context/${encodeURIComponent(symbol)}` : null);
 
-  useEffect(() => { setWatching(symbol ? isInWatchlist(symbol) : false); }, [symbol]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [messages, busy]);
 
   const lastMode = [...messages].reverse().find((m) => m.role === 'assistant' && m.answer);
@@ -118,7 +118,10 @@ export default function AIAdvisor() {
   };
 
   const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); } };
-  const onWatch = () => { const now = toggleWatchlist(symbol); setWatching(now); toast.success(now ? `${displaySymbol(symbol)} added to watchlist` : `${displaySymbol(symbol)} removed from watchlist`); };
+  const onWatch = async () => {
+    const now = await wl.toggle(symbol);
+    if (now !== null) toast.success(now ? `${displaySymbol(symbol)} added to watchlist` : `${displaySymbol(symbol)} removed from watchlist`);
+  };
 
   return (
     <div className="pg adv">

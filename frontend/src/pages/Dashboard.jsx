@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useFetch } from '../hooks/useFetch';
 import { useQuotes } from '../hooks/useQuotes';
+import { useWatchlist } from '../contexts/WatchlistContext';
 import DataTable from '../components/ui/DataTable';
 import { ChangeValue, EmptyState, ErrorState, Tabs } from '../components/ui/ui';
 import { Allocation, StatStrip } from '../components/PortfolioSummary';
@@ -10,13 +11,6 @@ import { aggregateLots, totalsByCurrency, valuePositions } from '../utils/portfo
 import { getMarketStatus } from '../utils/marketHours';
 import { displaySymbol, formatDateTime, formatMoney, formatNumber, formatPrice, formatTime, NA } from '../utils/format';
 import '../styles/workspace.css';
-
-const readWatchlist = () => {
-  try {
-    const v = JSON.parse(localStorage.getItem('quanta-watchlist') || '[]');
-    return Array.isArray(v) ? v.filter((s) => typeof s === 'string').slice(0, 20) : [];
-  } catch { return []; }
-};
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -47,7 +41,8 @@ export default function Dashboard() {
 
   const lots = useMemo(() => (posRes.data?.positions || []).map((p) => ({ symbol: p.symbol, shares: p.quantity, avgPrice: p.avgCost, name: p.name })), [posRes.data]);
   const lotSymbols = useMemo(() => lots.map((l) => l.symbol), [lots]);
-  const watchSymbols = useMemo(readWatchlist, []);
+  const wl = useWatchlist();
+  const watchSymbols = useMemo(() => wl.symbols.slice(0, 20), [wl.symbols]);
   const allSymbols = useMemo(() => [...new Set([...lotSymbols, ...watchSymbols])], [lotSymbols, watchSymbols]);
   const { quotes, loading: quotesLoading, error: quotesError, updatedAt } = useQuotes(allSymbols, { interval: 60_000 });
 
@@ -147,7 +142,7 @@ export default function Dashboard() {
         </section>
 
         <section className="panel" aria-label="Watchlist">
-          <div className="panel-head"><h2 className="panel-title">Watchlist</h2><Link to="/trade" className="shell-link-btn">Trading terminal →</Link></div>
+          <div className="panel-head"><h2 className="panel-title">Watchlist</h2><Link to="/watchlist" className="shell-link-btn">Manage lists →</Link></div>
           <DataTable
             columns={[
               { key: 'symbol', label: 'Symbol', render: symCell },
@@ -157,7 +152,7 @@ export default function Dashboard() {
             rows={watchRows} rowKey={(r) => r.symbol} loading={quotesLoading && watchRows.length > 0 && watchRows.every((r) => r.price === null)}
             empty="Your watchlist is empty. Add stocks from a stock page." dense
           />
-          <div className="panel-note">Watchlist is saved in this browser only.</div>
+          <div className="panel-note">Your default watchlist.</div>
         </section>
       </div>
 

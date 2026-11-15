@@ -1,0 +1,7 @@
+.dlg-backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; padding: var(--sp-4); }
+.dlg { width: min(420px, 100%); background: var(--q-surface); border: 1px solid var(--q-border-strong); border-radius: var(--q-radius-lg); box-shadow: var(--shadow-lg); }
+.dlg-body { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); font-size: var(--fs-base); color: var(--q-text-2); }
+.dlg-body label { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-sm); }
+.dlg-body input { width: 100%; }
+.dlg-error { color: var(--q-negative); font-size: var(--fs-sm); }
+.dlg-foot { display: flex; justify-content: flex-end; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--q-border); }

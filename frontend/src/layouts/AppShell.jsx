@@ -3,7 +3,7 @@ import { NavLink, Link, Outlet, useLocation, useNavigate } from 'react-router-do
 import axios from 'axios';
 import {
   Bell, Menu, PanelLeftClose, PanelLeftOpen, LogOut, UserRound,
-  LayoutList, LayoutDashboard, Globe2, CandlestickChart, ListChecks, Wallet, Sparkles, Briefcase, HelpCircle, Info, X,
+  LayoutList, LayoutDashboard, Globe2, CandlestickChart, ListChecks, Wallet, Sparkles, Eye, Briefcase, HelpCircle, Info, X,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -31,6 +31,7 @@ const NAV = [
   ]},
   { group: 'My Investments', items: [
     { to: '/portfolio', label: 'Portfolio', icon: Briefcase, auth: true },
+    { to: '/watchlist', label: 'Watchlist', icon: Eye, auth: true },
   ]},
   { group: 'Account', items: [
     { to: '/wallet', label: 'Wallet', icon: Wallet, auth: true },

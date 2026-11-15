@@ -206,3 +206,27 @@ export const getFundamentals = async (req, res) => {
     return unavailable(res, 'FUNDAMENTALS_UNAVAILABLE', 'Company data', err);
   }
 };
+
+export const getSparklines = async (req, res) => {
+  const symbols = [...new Set(String(req.query.symbols || '').split(',').map(cleanSymbol).filter(Boolean))].filter((x) => !x.startsWith('^')).slice(0, 20);
+  if (!symbols.length) return res.status(400).json({ message: 'symbols query parameter is required (comma-separated)' });
+  const out = {};
+  const queue = [...symbols];
+  const worker = async () => {
+    while (queue.length) {
+      const sym = queue.shift();
+      try {
+        const chart = await loadChart(sym, '1M');
+        const closes = chart.points.map((p) => p.close);
+        const step = Math.max(1, Math.ceil(closes.length / 30));
+        const sampled = closes.filter((_, i) => i % step === 0 || i === closes.length - 1);
+        const first = closes[0];
+        out[sym] = { closes: sampled, changePct: closes.length > 1 && first ? Math.round(((closes[closes.length - 1] - first) / first) * 10000) / 100 : null };
+      } catch {
+        out[sym] = null;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(5, symbols.length) }, worker));
+  res.json({ range: '1M', source: SOURCE, fetchedAt: new Date().toISOString(), sparklines: out });
+};

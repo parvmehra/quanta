@@ -1,7 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { searchStocks, getStockQuote, getStockNews, getStockHistory, clearCache, getMarketPulse, getBatchQuotes } from '../controllers/stockControllers.js';
-import { getChart, getFundamentals } from '../controllers/stockDataController.js';
+import { getChart, getFundamentals, getSparklines } from '../controllers/stockDataController.js';
 import { protect, requireAdmin } from '../middlewares/auth.js';
 import Subscription from '../models/Subscription.js';
 import User from '../models/User.js';
@@ -20,6 +20,7 @@ router.get('/news/:symbol', getStockNews);
 router.get('/history/:symbol', getStockHistory);
 router.get('/chart/:symbol', dataLimiter, getChart);
 router.get('/fundamentals/:symbol', dataLimiter, getFundamentals);
+router.get('/sparklines', dataLimiter, getSparklines);
 router.get('/market-pulse', getMarketPulse);
 
 router.post('/cache/clear', protect, requireAdmin, clearCache);

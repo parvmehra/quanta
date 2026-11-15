@@ -1,0 +1,15 @@
+.wl-tabs { display: flex; gap: var(--sp-1); padding: 0 var(--sp-3); border-bottom: 1px solid var(--q-border); overflow-x: auto; scrollbar-width: none; }
+.wl-tabs::-webkit-scrollbar { display: none; }
+.wl-tab { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-base); font-weight: 500; color: var(--q-text-2); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.wl-tab:hover { color: var(--q-text); }
+.wl-tab.is-active { color: var(--q-text); border-bottom-color: var(--q-info); }
+.wl-count { margin-left: 4px; font-size: var(--fs-xs); color: var(--q-text-3); }
+.wl-add { flex: 1 1 260px; max-width: 420px; min-width: 0; }
+.wl-filter { flex: 0 1 220px; }
+.wl-list-actions { display: inline-flex; gap: var(--sp-2); margin-left: auto; }
+.wl-trend { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--sp-3); }
+.spark { display: inline-block; vertical-align: middle; }
+.spark--na { color: var(--q-text-3); text-align: center; line-height: 28px; }
+.wl-x { color: var(--q-text-3); display: inline-flex; padding: 2px; }
+.wl-x:hover { color: var(--q-negative); }
+@media (max-width: 600px) { .wl-list-actions { margin-left: 0; } }

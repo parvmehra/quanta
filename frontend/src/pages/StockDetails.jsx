@@ -11,7 +11,7 @@ import ChartPanel from '../components/ChartPanel';
 import { useLiveQuote } from '../hooks/useLiveQuote';
 import { Badge, ChangeValue, EmptyState, ErrorState, Skeleton, Tabs } from '../components/ui/ui';
 import DataTable from '../components/ui/DataTable';
-import { isInWatchlist, toggleWatchlist } from '../utils/watchlist';
+import { useWatchlist } from '../contexts/WatchlistContext';
 import { displaySymbol, exchangeLabel, formatDateTime, formatMarketCap, formatNumber, formatPrice, formatTime, formatVolume, getCurrencyCode, NA } from '../utils/format';
 import '../styles/workspace.css';
 import '../styles/stock.css';
@@ -134,7 +134,8 @@ function StockPage({ symbol }) {
   const subs = useFetch('/api/stocks/subscriptions', { enabled: isAuthenticated });
 
   const [tab, setTab] = useState('overview');
-  const [watching, setWatching] = useState(() => isInWatchlist(symbol));
+  const wl = useWatchlist();
+  const watching = wl.isWatching(symbol);
   const [alertOverride, setAlertOverride] = useState(null);
   const [aboutOpen, setAboutOpen] = useState(false);
 
@@ -159,10 +160,9 @@ function StockPage({ symbol }) {
   const relatedSymbols = useMemo(() => (f?.related || []).map((r) => r.symbol), [f]);
   const related = useQuotes(relatedSymbols);
 
-  const onWatch = () => {
-    const now = toggleWatchlist(symbol);
-    setWatching(now);
-    toast.success(now ? `${displaySymbol(symbol)} added to watchlist` : `${displaySymbol(symbol)} removed from watchlist`);
+  const onWatch = async () => {
+    const now = await wl.toggle(symbol);
+    if (now !== null) toast.success(now ? `${displaySymbol(symbol)} added to watchlist` : `${displaySymbol(symbol)} removed from watchlist`);
   };
 
   const onAlerts = async () => {

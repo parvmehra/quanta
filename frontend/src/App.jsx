@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider } from './contexts/AuthContext';
+import { WatchlistProvider } from './contexts/WatchlistContext';
 
 import PublicLayout from './layouts/PublicLayout';
 import AppShell from './layouts/AppShell';
@@ -24,6 +25,7 @@ const Portfolio = lazy(() => import('./pages/Portfolio'));
 const Orders = lazy(() => import('./pages/Orders'));
 const Wallet = lazy(() => import('./pages/Wallet'));
 const AIAdvisor = lazy(() => import('./pages/AIAdvisor'));
+const Watchlist = lazy(() => import('./pages/Watchlist'));
 const Profile = lazy(() => import('./pages/Profile'));
 const FAQ = lazy(() => import('./pages/FAQ'));
 import NotFound from './pages/NotFound';
@@ -42,6 +44,7 @@ function App() {
       <NotificationProvider>
         <Router>
           <AuthProvider>
+            <WatchlistProvider>
             <Toaster
               position="bottom-right"
               toastOptions={{
@@ -73,6 +76,7 @@ function App() {
                 <Route path="/portfolio" element={guard(<Portfolio />)} />
                 <Route path="/orders" element={guard(<Orders />)} />
                 <Route path="/advisor" element={guard(<AIAdvisor />)} />
+                <Route path="/watchlist" element={guard(<Watchlist />)} />
                 <Route path="/wallet" element={guard(<Wallet />)} />
                 <Route path="/profile" element={guard(<Profile />)} />
                 <Route path="/faq" element={<FAQ />} />
@@ -80,6 +84,7 @@ function App() {
               </Route>
             </Routes>
             </Suspense>
+            </WatchlistProvider>
           </AuthProvider>
         </Router>
       </NotificationProvider>

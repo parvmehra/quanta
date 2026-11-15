@@ -10,6 +10,7 @@ import User from '../models/User.js';
 import ChatMessage from '../models/ChatMessage.js';
 import Subscription from '../models/Subscription.js';
 import NotificationLog from '../models/NotificationLog.js';
+import Watchlist from '../models/Watchlist.js';
 
 const URI = (process.env.MONGO_DB_URI || '').trim();
 const skip = URI ? false : 'MONGO_DB_URI is not set';
@@ -80,6 +81,7 @@ after(async () => {
     ChatMessage.deleteMany({ senderId: { $in: ids } }),
     Subscription.deleteMany({ userId: { $in: ids } }),
     NotificationLog.deleteMany({ userId: { $in: ids } }),
+    Watchlist.deleteMany({ userId: { $in: ids } }),
   ]);
   await mongoose.disconnect();
   server?.kill();
@@ -316,4 +318,96 @@ test('Mongo-operator injection in credentials is treated as invalid input', { sk
   const r = await call('POST', '/api/auth/login', { body: { email: { $gt: '' }, password: { $gt: '' } }, ipAddr });
   assert.strictEqual(r.status, 400);
   assert.strictEqual(r.data.token, undefined);
+});
+
+test('watchlists require a login and start with one empty default list', { skip }, async () => {
+  assert.strictEqual((await call('GET', '/api/watchlists')).status, 401);
+  assert.strictEqual((await call('POST', '/api/watchlists', { body: { name: 'x' } })).status, 401);
+  const u = await registerAndLogin();
+  const r = await call('GET', '/api/watchlists', { token: u.token });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.data.lists.length, 1);
+  assert.strictEqual(r.data.lists[0].isDefault, true);
+  assert.deepStrictEqual(r.data.lists[0].symbols, []);
+  const again = await call('GET', '/api/watchlists', { token: u.token });
+  assert.strictEqual(again.data.lists.length, 1, 'the default list is created once');
+});
+
+test('watchlist symbols are validated, normalised and never duplicated, even under concurrency', { skip }, async () => {
+  const u = await registerAndLogin();
+  const id = (await call('GET', '/api/watchlists', { token: u.token })).data.lists[0].id;
+  for (const symbol of ['<x>', '^GSPC', 'A=B', '', null, { $ne: 1 }, 'WAY-TOO-LONG-SYMBOL-NAME-123']) {
+    assert.strictEqual((await call('POST', `/api/watchlists/${id}/symbols`, { token: u.token, body: { symbol } })).status, 400, JSON.stringify(symbol));
+  }
+  const add = await call('POST', `/api/watchlists/${id}/symbols`, { token: u.token, body: { symbol: ' aapl ' } });
+  assert.strictEqual(add.status, 201);
+  assert.deepStrictEqual(add.data.list.symbols, ['AAPL']);
+  const dup = await call('POST', `/api/watchlists/${id}/symbols`, { token: u.token, body: { symbol: 'AAPL' } });
+  assert.strictEqual(dup.data.duplicate, true);
+  await Promise.all(Array.from({ length: 8 }, () => call('POST', `/api/watchlists/${id}/symbols`, { token: u.token, body: { symbol: 'TCS.NS' } })));
+  const list = (await call('GET', '/api/watchlists', { token: u.token })).data.lists[0];
+  assert.deepStrictEqual([...list.symbols].sort(), ['AAPL', 'TCS.NS'], 'concurrent adds produce one entry');
+  const rm = await call('DELETE', `/api/watchlists/${id}/symbols/aapl`, { token: u.token });
+  assert.deepStrictEqual(rm.data.list.symbols, ['TCS.NS']);
+  assert.strictEqual((await call('DELETE', `/api/watchlists/${id}/symbols/NOPE`, { token: u.token })).status, 200, 'removing a missing symbol is harmless');
+});
+
+test('lists: names are validated and unique, the default is protected, and there is a cap', { skip }, async () => {
+  const u = await registerAndLogin();
+  for (const name of ['', '   ', 'x'.repeat(41), { $ne: null }, 123, null]) {
+    assert.strictEqual((await call('POST', '/api/watchlists', { token: u.token, body: { name } })).status, 400, JSON.stringify(name));
+  }
+  const a = await call('POST', '/api/watchlists', { token: u.token, body: { name: '  Long   term ' } });
+  assert.strictEqual(a.status, 201);
+  assert.strictEqual(a.data.list.name, 'Long term', 'whitespace is tidied');
+  assert.strictEqual((await call('POST', '/api/watchlists', { token: u.token, body: { name: 'LONG TERM' } })).status, 409, 'names are unique ignoring case');
+  const renamed = await call('PATCH', `/api/watchlists/${a.data.list.id}`, { token: u.token, body: { name: 'Dividends' } });
+  assert.strictEqual(renamed.data.list.name, 'Dividends');
+  const defaultId = (await call('GET', '/api/watchlists', { token: u.token })).data.lists.find((l) => l.isDefault).id;
+  assert.strictEqual((await call('PATCH', `/api/watchlists/${defaultId}`, { token: u.token, body: { name: 'Dividends' } })).status, 409);
+  assert.strictEqual((await call('DELETE', `/api/watchlists/${defaultId}`, { token: u.token })).status, 400, 'the default list cannot be deleted');
+  assert.strictEqual((await call('DELETE', `/api/watchlists/${a.data.list.id}`, { token: u.token })).status, 200);
+  for (let i = 0; i < 9; i++) assert.strictEqual((await call('POST', '/api/watchlists', { token: u.token, body: { name: `List ${i}` } })).status, 201);
+  assert.strictEqual((await call('POST', '/api/watchlists', { token: u.token, body: { name: 'One too many' } })).status, 400, 'at most 10 lists');
+});
+
+test('watchlists are private to their owner', { skip }, async () => {
+  const a = await registerAndLogin();
+  const b = await registerAndLogin();
+  const created = await call('POST', '/api/watchlists', { token: a.token, body: { name: 'Secret' } });
+  const id = created.data.list.id;
+  await call('POST', `/api/watchlists/${id}/symbols`, { token: a.token, body: { symbol: 'NVDA' } });
+  assert.ok(!(await call('GET', '/api/watchlists', { token: b.token })).data.lists.some((l) => l.id === id));
+  assert.strictEqual((await call('POST', `/api/watchlists/${id}/symbols`, { token: b.token, body: { symbol: 'AAPL' } })).status, 404);
+  assert.strictEqual((await call('DELETE', `/api/watchlists/${id}/symbols/NVDA`, { token: b.token })).status, 404);
+  assert.strictEqual((await call('PATCH', `/api/watchlists/${id}`, { token: b.token, body: { name: 'Hacked' } })).status, 404);
+  assert.strictEqual((await call('DELETE', `/api/watchlists/${id}`, { token: b.token })).status, 404);
+  const mine = (await call('GET', '/api/watchlists', { token: a.token })).data.lists.find((l) => l.id === id);
+  assert.deepStrictEqual(mine.symbols, ['NVDA']);
+  assert.strictEqual(mine.name, 'Secret');
+});
+
+test('watchlist size is capped and the browser list can be imported once without duplicates', { skip }, async () => {
+  const u = await registerAndLogin();
+  const imp = await call('POST', '/api/watchlists/import', { token: u.token, body: { symbols: ['aapl', 'MSFT', 'bad!!', 'AAPL', '^GSPC'] } });
+  assert.strictEqual(imp.status, 200);
+  assert.deepStrictEqual(imp.data.list.symbols, ['AAPL', 'MSFT']);
+  assert.strictEqual(imp.data.added, 2);
+  const again = await call('POST', '/api/watchlists/import', { token: u.token, body: { symbols: ['AAPL', 'MSFT'] } });
+  assert.strictEqual(again.data.added, 0, 'importing twice adds nothing');
+  const many = Array.from({ length: 150 }, (_, i) => `T${i}`);
+  const full = await call('POST', '/api/watchlists/import', { token: u.token, body: { symbols: many } });
+  assert.strictEqual(full.data.list.symbols.length, 100, 'capped at 100 stocks');
+  const id = full.data.list.id;
+  assert.strictEqual((await call('POST', `/api/watchlists/${id}/symbols`, { token: u.token, body: { symbol: 'ZZZ' } })).status, 400, 'the 101st stock is refused');
+});
+
+test('the sparkline endpoint returns compact real price history and validates input', { skip }, async () => {
+  assert.strictEqual((await call('GET', '/api/stocks/sparklines')).status, 400);
+  assert.strictEqual((await call('GET', '/api/stocks/sparklines?symbols=%3Cx%3E,%5EGSPC')).status, 400);
+  const r = await call('GET', '/api/stocks/sparklines?symbols=AAPL,ZZZZNOPE');
+  assert.strictEqual(r.status, 200);
+  assert.ok(r.data.sparklines.AAPL.closes.length >= 5 && r.data.sparklines.AAPL.closes.length <= 31);
+  assert.ok(r.data.sparklines.AAPL.closes.every((n) => typeof n === 'number' && n > 0));
+  assert.strictEqual(r.data.sparklines.ZZZZNOPE, null, 'unavailable symbols are null, never invented');
 });

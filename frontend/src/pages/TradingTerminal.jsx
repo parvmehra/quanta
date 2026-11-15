@@ -12,7 +12,7 @@ import SymbolSearch from '../components/SymbolSearch';
 import DataTable from '../components/ui/DataTable';
 import { Badge, ChangeValue, ErrorState, Skeleton, Tabs } from '../components/ui/ui';
 import { aggregateLots, valuePositions } from '../utils/portfolioMath';
-import { readWatchlist, toggleWatchlist } from '../utils/watchlist';
+import { useWatchlist } from '../contexts/WatchlistContext';
 import { apiMessage, cancelOrder } from '../services/trading';
 import { displaySymbol, exchangeLabel, formatDateTime, formatMoney, formatPrice, formatTime, getCurrencyCode } from '../utils/format';
 import '../styles/workspace.css';
@@ -35,7 +35,8 @@ function Terminal({ symbol }) {
   const positionsRes = useFetch('/api/positions', { interval: 20_000 });
   const orders = useFetch('/api/orders?limit=100', { interval: 15_000 });
 
-  const [watch, setWatch] = useState(readWatchlist);
+  const wl = useWatchlist();
+  const watch = wl.symbols;
   const [bottom, setBottom] = useState('open');
   const [region, setRegion] = useState('US');
   const [side, setSide] = useState('gainers');
@@ -60,12 +61,13 @@ function Terminal({ symbol }) {
 
   const pick = (s) => navigate(`/trade/${encodeURIComponent(String(s).toUpperCase())}`);
 
-  const onWatch = () => {
-    const now = toggleWatchlist(symbol);
-    setWatch(readWatchlist());
-    toast.success(now ? `${displaySymbol(symbol)} added to watchlist` : `${displaySymbol(symbol)} removed from watchlist`);
+  const onWatch = async () => {
+    const now = await wl.toggle(symbol);
+    if (now !== null) toast.success(now ? `${displaySymbol(symbol)} added to watchlist` : `${displaySymbol(symbol)} removed from watchlist`);
   };
-  const removeWatch = (s) => { if (watch.includes(s)) { toggleWatchlist(s); setWatch(readWatchlist()); } };
+  const removeWatch = async (s) => {
+    if (wl.defaultList && watch.includes(s)) { try { await wl.removeSymbol(wl.defaultList.id, s); } catch (err) { toast.error(apiMessage(err)); } }
+  };
 
   const onCancel = async (id) => {
     setCancelling(id);
@@ -132,7 +134,7 @@ function Terminal({ symbol }) {
                 ))}
               </ul>
             )}
-            <div className="panel-note">Saved in this browser.</div>
+            <div className="panel-note"><Link to="/watchlist" className="shell-link-btn">Manage lists →</Link></div>
           </section>
 
           <section className="panel" aria-label="Market movers">
@@ -231,8 +233,10 @@ function Terminal({ symbol }) {
 
 export default function TradingTerminal() {
   const { symbol } = useParams();
+  const wl = useWatchlist();
   if (!symbol) {
-    const first = readWatchlist()[0] || 'AAPL';
+    if (!wl.loaded && !wl.error) return null;
+    const first = wl.symbols[0] || 'AAPL';
     return <Navigate to={`/trade/${encodeURIComponent(first)}`} replace />;
   }
   let s = '';
