@@ -1,8 +1,11 @@
-import React from "react";
-import { Activity, Github, Twitter, Linkedin } from "lucide-react";
-import "./Footer.css";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { Activity } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import './Footer.css';
 
 const Footer = () => {
+  const { isAuthenticated } = useAuth();
   return (
     <footer className="footer">
       <div className="container">
@@ -12,50 +15,45 @@ const Footer = () => {
               <Activity className="footer-logo-icon" />
               <span>Quanta</span>
             </div>
-            <p className="footer-description">
-              Professional stock analysis platform for intelligent investment
-              decisions.
-            </p>
+            <p className="footer-description">Market research and paper trading for US and Indian stocks.</p>
           </div>
 
           <div className="footer-section">
-            <h4>Product</h4>
+            <h4>Markets</h4>
             <ul className="footer-links">
-              <li><a href="/">Home</a></li>
-              <li><a href="/analyzer">Analyzer</a></li>
-              <li><a href="/portfolio">Portfolio</a></li>
-              <li><a href="/about">About</a></li>
+              <li><Link to="/markets">Market overview</Link></li>
+              <li><Link to="/analyzer">Stock explorer</Link></li>
             </ul>
           </div>
 
           <div className="footer-section">
-            <h4>Features</h4>
+            <h4>Account</h4>
             <ul className="footer-links">
-              <li><a href="#">Live Market Data</a></li>
-              <li><a href="#">Technical Analysis</a></li>
-              <li><a href="#">Portfolio Tracking</a></li>
-              <li><a href="#">Market News</a></li>
+              {isAuthenticated ? (
+                <>
+                  <li><Link to="/dashboard">Dashboard</Link></li>
+                  <li><Link to="/portfolio">Portfolio</Link></li>
+                </>
+              ) : (
+                <>
+                  <li><Link to="/login">Sign in</Link></li>
+                  <li><Link to="/signup">Create account</Link></li>
+                </>
+              )}
             </ul>
           </div>
 
           <div className="footer-section">
-            <h4>Connect</h4>
-            <div className="social-links">
-              <a href="#" className="social-link" aria-label="GitHub">
-                <Github size={18} />
-              </a>
-              <a href="#" className="social-link" aria-label="Twitter">
-                <Twitter size={18} />
-              </a>
-              <a href="#" className="social-link" aria-label="LinkedIn">
-                <Linkedin size={18} />
-              </a>
-            </div>
+            <h4>Help</h4>
+            <ul className="footer-links">
+              <li><Link to="/faq">FAQ</Link></li>
+              <li><Link to="/about">About</Link></li>
+            </ul>
           </div>
         </div>
 
         <div className="footer-bottom">
-          <p>&copy; 2025 Quanta. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Quanta. Simulated trading only. Data from Yahoo Finance may be delayed. Not investment advice.</p>
         </div>
       </div>
     </footer>

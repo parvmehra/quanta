@@ -193,7 +193,9 @@ const Signup = () => {
                 <Lock className="auth-icon" size={20} />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Password (Min 8 chars, 1 uppercase, 1 number)"
+                  placeholder="Password"
+                  aria-label="Password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -201,11 +203,13 @@ const Signup = () => {
                 <button
                   type="button"
                   className="auth-icon-btn"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+              <p className="auth-hint">At least 8 characters, with one uppercase letter and one number.</p>
 
               <div className="auth-input-group">
                 <Lock className="auth-icon" size={20} />

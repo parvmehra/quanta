@@ -341,3 +341,5 @@
 .auth-link-btn:hover {
   text-decoration: underline;
 }
+
+.auth-hint { margin: calc(var(--sp-2) * -1) 0 var(--sp-3); color: var(--q-text-3); font-size: var(--fs-xs); line-height: 1.4; }
