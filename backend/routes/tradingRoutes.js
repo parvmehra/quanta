@@ -6,6 +6,7 @@ import { protect } from '../middlewares/auth.js';
 import { requireDb } from '../middlewares/requireDb.js';
 import User from '../models/User.js';
 import { notifyUser } from '../services/notificationService.js';
+import { log } from '../utils/logger.js';
 import {
   TradeError, placeOrder, cancelOrder, getBalances, getPositions, importHoldings, serializeOrder, serializeEntry,
 } from '../services/tradeService.js';
@@ -30,7 +31,7 @@ const handle = (fn) => async (req, res) => {
     if (err instanceof TradeError) {
       return res.status(err.status).json({ code: err.code, message: err.message, order: err.order ? serializeOrder(err.order) : undefined });
     }
-    console.error('Trading route error:', err.message);
+    log.error('Trading route error:', err.message);
     res.status(500).json({ code: 'SERVER_ERROR', message: 'Something went wrong. Please try again.' });
   }
 };

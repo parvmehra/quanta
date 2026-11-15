@@ -11,6 +11,7 @@ import { sendPhoneVerificationOtp, verifyPhoneOtp } from '../services/smsService
 import admin from '../config/firebase.js';
 import { JWT_SECRET, IS_PRODUCTION } from '../config/env.js';
 import { sixDigitCode, hashCode, safeEqualHex } from '../utils/codes.js';
+import { log } from '../utils/logger.js';
 
 const router = express.Router();
 router.use(requireDb);
@@ -145,7 +146,7 @@ router.post('/signup', authLimiter, async (req, res) => {
     });
   } catch (err) {
     if (err?.code === 11000) return res.status(400).json({ message: 'An account with this email already exists. Please sign in.' });
-    console.error('Registration error:', err.message);
+    log.error('Registration error:', err.message);
     res.status(500).json({ message: 'Server error during registration.' });
   }
 });
@@ -186,7 +187,7 @@ router.post('/verify-email', verifyLimiter, async (req, res) => {
     setAuthCookie(req, res, jwtToken);
     res.json({ message: 'Email verified successfully! Welcome to Quanta.', token: jwtToken, user: formatUserResponse(user) });
   } catch (err) {
-    console.error('Email verification error:', err.message);
+    log.error('Email verification error:', err.message);
     res.status(500).json({ message: 'Server error during verification.' });
   }
 });
@@ -202,7 +203,7 @@ router.post('/resend-verification', authLimiter, async (req, res) => {
     const code = await issueEmailVerification(user);
     res.json({ ...generic, debugCode: debugOnly(code) });
   } catch (err) {
-    console.error('Resend verification error:', err.message);
+    log.error('Resend verification error:', err.message);
     res.status(500).json({ message: 'Server error.' });
   }
 });
@@ -252,7 +253,7 @@ router.post('/login', authLimiter, async (req, res) => {
       debugCode: debugOnly(otp),
     });
   } catch (err) {
-    console.error('Login error:', err.message);
+    log.error('Login error:', err.message);
     res.status(500).json({ message: 'Server error during login.' });
   }
 });
@@ -302,7 +303,7 @@ router.post('/verify-login-otp', authLimiter, async (req, res) => {
     setAuthCookie(req, res, token);
     res.json({ token, user: formatUserResponse(user) });
   } catch (err) {
-    console.error('Verify login OTP error:', err.message);
+    log.error('Verify login OTP error:', err.message);
     res.status(500).json({ message: 'Server error during verification.' });
   }
 });
@@ -318,7 +319,7 @@ router.post('/resend-login-otp', otpLimiter, async (req, res) => {
     const otp = await issueLoginOtp(user);
     res.json({ ...generic, debugCode: debugOnly(otp) });
   } catch (err) {
-    console.error('Resend login OTP error:', err.message);
+    log.error('Resend login OTP error:', err.message);
     res.status(500).json({ message: 'Server error resending code.' });
   }
 });
@@ -380,7 +381,7 @@ router.post('/google', authLimiter, async (req, res) => {
       requiresPhoneOnboarding: !user.isPhoneVerified && !user.phonePromptDismissed,
     });
   } catch (err) {
-    console.error('Google auth error:', err.message);
+    log.error('Google auth error:', err.message);
     res.status(500).json({ message: 'Server error during Google authentication.' });
   }
 });
@@ -403,7 +404,7 @@ router.post('/forgot-password', authLimiter, async (req, res) => {
 
     res.json({ ...generic, debugCode: debugOnly(code) });
   } catch (err) {
-    console.error('Forgot password error:', err.message);
+    log.error('Forgot password error:', err.message);
     res.status(500).json({ message: 'Server error.' });
   }
 });
@@ -444,7 +445,7 @@ router.post('/reset-password', verifyLimiter, async (req, res) => {
 
     res.json({ message: 'Password has been successfully updated. You may now sign in.' });
   } catch (err) {
-    console.error('Reset password error:', err.message);
+    log.error('Reset password error:', err.message);
     res.status(500).json({ message: 'Server error during password reset.' });
   }
 });
@@ -576,7 +577,7 @@ router.post('/change-password', protect, passwordChangeLimiter, async (req, res)
     setAuthCookie(req, res, token);
     res.json({ message: 'Password updated. You were signed out of your other sessions.', token });
   } catch (err) {
-    console.error('Change password error:', err.message);
+    log.error('Change password error:', err.message);
     res.status(500).json({ message: 'Server error' });
   }
 });

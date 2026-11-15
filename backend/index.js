@@ -8,7 +8,6 @@ import { yahooFinance, VALID_SYMBOL } from './services/yahoo.js';
 import stockRoutes from './routes/stockRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import tradingRoutes from './routes/tradingRoutes.js';
-import chatRoutes from './routes/chatRoutes.js';
 import walletRoutes from './routes/walletRoutes.js';
 import marketRoutes from './routes/marketRoutes.js';
 import advisorRoutes from './routes/advisorRoutes.js';
@@ -17,8 +16,9 @@ import connectDB, { isDbReady } from './config/connectDB.js';
 import { runMatcher } from './services/tradeService.js';
 import jwt from 'jsonwebtoken';
 import User from './models/User.js';
-import ChatMessage from './models/ChatMessage.js';
-import cookieParser from "cookie-parser";
+import cookieParser from 'cookie-parser';
+import mongoose from 'mongoose';
+import { log } from './utils/logger.js';
 import { JWT_SECRET } from './config/env.js';
 
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173,http://127.0.0.1:5173")
@@ -64,18 +64,39 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+app.use((req, res, next) => {
+  const started = Date.now();
+  res.on('finish', () => {
+    const ms = Date.now() - started;
+    const line = `${req.method} ${req.originalUrl.split('?')[0]} ${res.statusCode} ${ms}ms`;
+    if (res.statusCode >= 500) log.error(line);
+    else if (res.statusCode >= 400 && res.statusCode !== 404) log.warn(line);
+    else if (ms > 2000) log.warn(`slow ${line}`);
+  });
+  next();
+});
+
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 
 app.use('/api/stocks', stockRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', tradingRoutes);
-app.use('/api/chat', chatRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/advisor', advisorRoutes);
 app.use('/api/watchlists', watchlistRoutes);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'quanta', time: Date.now() }));
+app.use('/api', (_req, res) => res.status(404).json({ message: 'Not found.' }));
+
+app.use((err, req, res, _next) => {
+  const status = Number(err.status || err.statusCode) || 500;
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ message: 'Invalid JSON in the request body.' });
+  if (err.message === 'Not allowed by CORS') return res.status(403).json({ message: 'Origin not allowed.' });
+  if (status >= 500) log.error(`Unhandled error on ${req.method} ${req.originalUrl.split('?')[0]}: ${err.message}`);
+  if (res.headersSent) return undefined;
+  return res.status(status).json({ message: status >= 500 ? 'Something went wrong. Please try again.' : err.message });
+});
 
 const POLL_INTERVAL_MS = 15 * 1000;
 const MAX_SYMBOLS_PER_POLL = 50;
@@ -114,7 +135,7 @@ async function pollOnce() {
       });
     }
   } catch (err) {
-    console.warn('Live price poll failed:', err.message);
+    log.warn('Live price poll failed:', err.message);
   } finally {
     polling = false;
   }
@@ -148,41 +169,6 @@ io.use(async (socket, next) => {
 });
 
 io.on('connection', (socket) => {
-  const me = () => socket.data.user;
-
-  socket.on('join_chat', (roomId) => {
-    const user = me();
-    const room = String(roomId || '');
-    if (!user || !room) return;
-    if (user.role !== 'admin' && room !== user.id) return;
-    socket.join(`chat_${room}`);
-  });
-
-  socket.on('join_admin', () => {
-    if (me()?.role === 'admin') socket.join('admin_room');
-  });
-
-  socket.on('send_message', async (data) => {
-    const user = me();
-    const text = String(data?.text || '').trim().slice(0, 2000);
-    if (!user || !text) return;
-    const roomId = user.role === 'admin' ? String(data?.roomId || '') : user.id;
-    if (!roomId) return;
-    try {
-      const message = await ChatMessage.create({
-        roomId,
-        senderId: user.id,
-        senderName: user.role === 'admin' ? 'Admin' : user.name,
-        text,
-      });
-      const payload = message.toObject();
-      io.to(`chat_${roomId}`).emit('receive_message', payload);
-      io.to('admin_room').emit('receive_message', payload);
-    } catch (err) {
-      console.error('Chat message error:', err.message);
-    }
-  });
-
   socket.on('subscribe', (symbol) => {
     const sym = String(symbol || '').trim().toUpperCase();
     if (!VALID_SYMBOL.test(sym)) return;
@@ -213,12 +199,9 @@ io.on('connection', (socket) => {
         if (symbolSubscribers.size === 0) stopGlobalPolling();
       }
     }
-    console.log(`📤 ${socket.id} unsubscribed from ${sym}`);
   });
 
   socket.on('disconnect', () => {
-    console.log(`❌ Client disconnected: ${socket.id}`);
-
     for (const [sym, subs] of symbolSubscribers.entries()) {
       subs.delete(socket.id);
       if (subs.size === 0) {
@@ -231,27 +214,50 @@ io.on('connection', (socket) => {
 
 const MATCHER_INTERVAL_MS = 20 * 1000;
 let matching = false;
+let matcherTimer = null;
 function startMatcher() {
-  const timer = setInterval(async () => {
+  matcherTimer = setInterval(async () => {
     if (matching || !isDbReady()) return;
     matching = true;
     try {
       const { filled } = await runMatcher();
-      if (filled > 0) console.log(`Order matcher filled ${filled} order(s)`);
+      if (filled > 0) log.info(`Order matcher filled ${filled} order(s)`);
     } catch (err) {
-      console.error('Order matcher error:', err.message);
+      log.error('Order matcher error:', err.message);
     } finally {
       matching = false;
     }
   }, MATCHER_INTERVAL_MS);
-  timer.unref();
+  matcherTimer.unref();
 }
 
 connectDB().then((ok) => { if (ok) startMatcher(); });
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🔌 WebSocket ready for live price updates`);
+server.on('error', (err) => {
+  log.error(err.code === 'EADDRINUSE' ? `Port ${PORT} is already in use. Stop the other process or set PORT.` : `Server error: ${err.message}`);
+  process.exit(1);
 });
+server.listen(PORT, () => log.info(`Quanta API listening on port ${PORT}`));
 
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  log.info(`${signal} received, shutting down`);
+  const force = setTimeout(() => { log.error('Shutdown timed out, exiting'); process.exit(1); }, 10000);
+  force.unref();
+  stopGlobalPolling();
+  if (matcherTimer) clearInterval(matcherTimer);
+  const waitStart = Date.now();
+  while (matching && Date.now() - waitStart < 5000) await new Promise((r) => setTimeout(r, 100));
+  await new Promise((resolve) => io.close(resolve));
+  server.closeAllConnections?.();
+  await mongoose.disconnect().catch(() => {});
+  log.info('Shutdown complete');
+  process.exit(0);
+}
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('unhandledRejection', (reason) => log.error('Unhandled rejection:', reason instanceof Error ? reason.message : String(reason)));
+process.on('uncaughtException', (err) => { log.error('Uncaught exception:', err.message); process.exit(1); });

@@ -5,13 +5,14 @@ import { requireDb } from '../middlewares/requireDb.js';
 import User from '../models/User.js';
 import { notifyUser } from '../services/notificationService.js';
 import { TradeError, getBalances, deposit, serializeEntry, DEPOSIT_MAX, DEPOSIT_DAILY_CAP } from '../services/tradeService.js';
+import { log } from '../utils/logger.js';
 
 const router = express.Router();
 router.use(protect, requireDb);
 
 const fail = (res, err) => {
   if (err instanceof TradeError) return res.status(err.status).json({ code: err.code, message: err.message });
-  console.error('Wallet route error:', err.message);
+  log.error('Wallet route error:', err.message);
   return res.status(500).json({ code: 'SERVER_ERROR', message: 'Something went wrong. Please try again.' });
 };
 

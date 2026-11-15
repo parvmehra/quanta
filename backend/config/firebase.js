@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { log } from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,7 +25,7 @@ if (!firebaseConfig.privateKey || !firebaseConfig.clientEmail) {
         privateKey: serviceAccount.private_key,
       };
     } catch (e) {
-      console.warn('⚠️ Could not parse serviceAccountKey.json:', e.message);
+      log.warn('Could not parse serviceAccountKey.json:', e.message);
     }
   }
 }
@@ -40,12 +41,12 @@ if (firebaseConfig.projectId && firebaseConfig.clientEmail && firebaseConfig.pri
           credential: cert(firebaseConfig),
         });
     adminAuth = getAuth(adminApp);
-    console.log('✅ Firebase Admin SDK initialized successfully');
+    log.info('Firebase Admin SDK initialized successfully');
   } catch (err) {
-    console.error('❌ Failed to initialize Firebase Admin SDK:', err.message);
+    log.error('Failed to initialize Firebase Admin SDK:', err.message);
   }
 } else {
-  console.warn('⚠️ Firebase Admin credentials not configured — Google Auth token verification disabled');
+  log.warn('Firebase Admin credentials not configured — Google Auth token verification disabled');
 }
 
 export { adminApp, adminAuth };

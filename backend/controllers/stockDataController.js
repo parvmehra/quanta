@@ -1,4 +1,5 @@
 import { yahooFinance, VALID_SYMBOL } from '../services/yahoo.js';
+import { log } from '../utils/logger.js';
 
 const SOURCE = 'Yahoo Finance';
 const DAY = 24 * 60 * 60 * 1000;
@@ -37,7 +38,7 @@ export const cleanSymbol = (raw) => {
 export const isValidRange = (range) => Object.prototype.hasOwnProperty.call(RANGES, range);
 
 const unavailable = (res, code, what, err) => {
-  console.warn(`${what} unavailable:`, err?.message);
+  log.warn(`${what} unavailable:`, err?.message);
   return res.status(503).json({ code, message: `${what} is temporarily unavailable.` });
 };
 

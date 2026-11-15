@@ -1,6 +1,7 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
 import yahooFinancePkg from 'yahoo-finance2';
+import { log } from '../utils/logger.js';
 const yahooFinance = typeof yahooFinancePkg === 'function' ? new yahooFinancePkg() : yahooFinancePkg;
 
 try {
@@ -39,7 +40,7 @@ export const clearCache = (_req, res) => {
     cache.quote   = {};
     cache.news    = {};
     cache.history = {};
-    console.log('🗑️  Cache cleared');
+    log.info('Cache cleared');
     res.status(200).json({ message: 'Cache cleared successfully' });
 };
 
@@ -133,9 +134,9 @@ export const searchStocks = async (req, res) => {
             }
         } catch (err) {
             if (isFinnhubRateLimit(err)) {
-                console.warn(`⚠️ Finnhub rate limit hit during search for "${q}"`);
+                log.warn(`Finnhub rate limit hit during search for "${q}"`);
             } else {
-                console.error('Finnhub search error:', err.message);
+                log.error('Finnhub search error:', err.message);
             }
         }
 
@@ -159,7 +160,7 @@ export const searchStocks = async (req, res) => {
                 }
             }
         } catch (err) {
-             console.error('Yahoo Finance search error:', err.message);
+             log.error('Yahoo Finance search error:', err.message);
         }
 
         if (results.length === 0) {
@@ -176,7 +177,7 @@ export const searchStocks = async (req, res) => {
         cache.search[qLower] = { data: enrichedResults, timestamp: Date.now() };
         res.status(200).json(enrichedResults);
     } catch (err) {
-        console.error('Overall Search error:', err.message);
+        log.error('Overall Search error:', err.message);
         const filtered = FALLBACK_STOCKS.filter(s =>
             s.symbol.toLowerCase().includes(qLower) ||
             s.description.toLowerCase().includes(qLower)
@@ -216,7 +217,7 @@ export const getStockQuote = async (req, res) => {
                 };
             }
         } catch (err) {
-            console.warn(`Yahoo Finance quote failed for ${symbol}, trying Finnhub fallback:`, err.message);
+            log.warn(`Yahoo Finance quote failed for ${symbol}, trying Finnhub fallback:`, err.message);
         }
 
         if (!data) {
@@ -258,11 +259,11 @@ export const getStockQuote = async (req, res) => {
         res.status(200).json(data);
     } catch (err) {
         if (isFinnhubRateLimit(err)) {
-             console.warn(`⚠️ Finnhub rate limit hit for quote of ${symbol}`);
+             log.warn(`Finnhub rate limit hit for quote of ${symbol}`);
              return res.status(429).json({ message: 'API rate limit reached. Please wait and try again.' });
         }
         
-        console.error(`Quote error for ${symbol}:`, err.message);
+        log.error(`Quote error for ${symbol}:`, err.message);
         
         return res.status(503).json({ code: 'DATA_UNAVAILABLE', message: 'Quote data is temporarily unavailable.' });
     }
@@ -299,7 +300,7 @@ export const getStockNews = async (req, res) => {
                 }));
             }
         } catch (err) {
-            console.warn(`Yahoo Finance news failed for ${symbol}, trying Finnhub fallback:`, err.message);
+            log.warn(`Yahoo Finance news failed for ${symbol}, trying Finnhub fallback:`, err.message);
         }
 
         if (articles.length === 0) {
@@ -329,11 +330,11 @@ export const getStockNews = async (req, res) => {
         res.status(200).json(articles);
     } catch (err) {
         if (isFinnhubRateLimit(err)) {
-             console.warn(`⚠️ Finnhub rate limit hit for news of ${symbol}`);
+             log.warn(`Finnhub rate limit hit for news of ${symbol}`);
              return res.status(429).json({ message: 'API rate limit reached. Please wait and try again.' });
         }
         
-        console.error(`News error for ${symbol}:`, err.message);
+        log.error(`News error for ${symbol}:`, err.message);
         
         return res.status(200).json([]);
     }
@@ -389,7 +390,7 @@ export const getStockHistory = async (req, res) => {
                     }));
             }
         } catch (err) {
-            console.warn(`Yahoo Finance history failed for ${symbol}, trying Finnhub fallback:`, err.message);
+            log.warn(`Yahoo Finance history failed for ${symbol}, trying Finnhub fallback:`, err.message);
         }
 
         if (dataPoints.length === 0) {
@@ -426,11 +427,11 @@ export const getStockHistory = async (req, res) => {
         res.status(200).json(dataPoints);
     } catch (err) {
         if (isFinnhubRateLimit(err)) {
-             console.warn(`⚠️ Finnhub rate limit hit for history of ${symbol}`);
+             log.warn(`Finnhub rate limit hit for history of ${symbol}`);
              return res.status(429).json({ message: 'API rate limit reached. Please wait and try again.' });
         }
         
-        console.error(`History error for ${symbol}:`, err.message);
+        log.error(`History error for ${symbol}:`, err.message);
         
         return res.status(503).json({ code: 'DATA_UNAVAILABLE', message: 'Price history is temporarily unavailable.' });
     }
@@ -463,7 +464,7 @@ export const getMarketPulse = async (_req, res) => {
                     isPositive: (q.regularMarketChange || 0) >= 0,
                 });
             } catch (err) {
-                console.warn(`Market Pulse: Failed to fetch ${idx.name}:`, err.message);
+                log.warn(`Market Pulse: Failed to fetch ${idx.name}:`, err.message);
                 indices.push({
                     symbol: idx.symbol,
                     name: idx.name,
@@ -486,7 +487,7 @@ export const getMarketPulse = async (_req, res) => {
                 }
             }
         } catch (err) {
-            console.warn('Market Pulse: Top gainer fetch failed:', err.message);
+            log.warn('Market Pulse: Top gainer fetch failed:', err.message);
         }
 
         const now = new Date();
@@ -511,7 +512,7 @@ export const getMarketPulse = async (_req, res) => {
         cache.marketPulse = { data, timestamp: Date.now() };
         res.status(200).json(data);
     } catch (err) {
-        console.error('Market Pulse error:', err.message);
+        log.error('Market Pulse error:', err.message);
         res.status(200).json({
             indices: [
                 { symbol: '^GSPC', name: 'S&P 500', price: 0, change: 0, changePercent: 0, isPositive: true },
@@ -564,7 +565,7 @@ const enrichResultsWithQuotes = async (results) => {
             return r;
         });
     } catch (err) {
-        console.warn('Failed to enrich search results with live quotes:', err.message);
+        log.warn('Failed to enrich search results with live quotes:', err.message);
         return results;
     }
 };
@@ -603,7 +604,7 @@ export const getBatchQuotes = async (req, res) => {
 
         res.status(200).json(result);
     } catch (err) {
-        console.error('Batch quotes error:', err.message);
+        log.error('Batch quotes error:', err.message);
         res.status(500).json({ message: 'Failed to fetch batch quotes' });
     }
 };

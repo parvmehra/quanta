@@ -5,10 +5,10 @@ const NotificationContext = createContext();
 
 export const useNotification = () => useContext(NotificationContext);
 
-export const NotificationProvider = ({ children }) => {
-  const getUserId = () => localStorage.getItem('userId') || 'guest';
-  const getStorageKey = () => `quanta-notifications-${getUserId()}`;
+const getUserId = () => localStorage.getItem('userId') || 'guest';
+const getStorageKey = () => `quanta-notifications-${getUserId()}`;
 
+export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState(() => {
     const saved = localStorage.getItem(getStorageKey());
     return saved ? JSON.parse(saved) : [];

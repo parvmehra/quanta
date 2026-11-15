@@ -1,3 +1,4 @@
+import { log } from '../utils/logger.js';
 import {
   sendVerificationEmail,
   sendLoginOtpEmail,
@@ -38,7 +39,7 @@ export const notifyUser = async (user, eventType, data = {}) => {
 
   const referenceId = data.referenceId || `${user._id}_${eventType}_${Date.now()}`;
   if (data.referenceId && isEventProcessed(data.referenceId)) {
-    console.log(`ℹ️ Notification for reference ${data.referenceId} already processed (idempotent skipped)`);
+    log.info(`ℹNotification for reference ${data.referenceId} already processed (idempotent skipped)`);
     return { skipped: true, reason: 'Duplicate event' };
   }
 
@@ -163,7 +164,7 @@ export const notifyUser = async (user, eventType, data = {}) => {
         break;
     }
   } catch (err) {
-    console.error(`Email dispatch error for ${eventType}:`, err.message);
+    log.error(`Email dispatch error for ${eventType}:`, err.message);
   }
 
   const shouldSendSms = user.phone && user.isPhoneVerified;
@@ -205,7 +206,7 @@ export const notifyUser = async (user, eventType, data = {}) => {
       }
     }
   } catch (err) {
-    console.error(`SMS dispatch error for ${eventType}:`, err.message);
+    log.error(`SMS dispatch error for ${eventType}:`, err.message);
   }
 
   return results;

@@ -5,9 +5,7 @@ import crypto from 'crypto';
 import { spawn } from 'child_process';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
-import { io as connectSocket } from 'socket.io-client';
 import User from '../models/User.js';
-import ChatMessage from '../models/ChatMessage.js';
 import Subscription from '../models/Subscription.js';
 import NotificationLog from '../models/NotificationLog.js';
 import Watchlist from '../models/Watchlist.js';
@@ -19,7 +17,6 @@ const BASE = `http://localhost:${PORT}`;
 const EMAIL_RE = /^apitest-.*@example\.com$/;
 const PASSWORD = 'ApiTest12345';
 let server;
-const sockets = [];
 
 const ip = () => `10.${crypto.randomInt(1, 250)}.${crypto.randomInt(1, 250)}.${crypto.randomInt(1, 250)}`;
 async function call(method, path, { body, token, headers = {}, ipAddr } = {}) {
@@ -47,14 +44,6 @@ async function registerAndLogin(email = uniqueEmail(), name = 'Api Tester') {
   return { email, token: o.data.token, id: o.data.user.id, ipAddr };
 }
 
-function socketFor(token) {
-  const s = connectSocket(BASE, { transports: ['websocket'], auth: token ? { token } : {}, forceNew: true });
-  sockets.push(s);
-  return new Promise((resolve, reject) => {
-    s.on('connect', () => resolve(s));
-    s.on('connect_error', reject);
-  });
-}
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 before(async () => {
@@ -73,12 +62,10 @@ before(async () => {
 
 after(async () => {
   if (skip) return;
-  sockets.forEach((s) => s.close());
   const users = await User.find({ email: EMAIL_RE }).select('_id').lean();
   const ids = users.map((u) => u._id);
   await Promise.all([
     User.deleteMany({ email: EMAIL_RE }),
-    ChatMessage.deleteMany({ senderId: { $in: ids } }),
     Subscription.deleteMany({ userId: { $in: ids } }),
     NotificationLog.deleteMany({ userId: { $in: ids } }),
     Watchlist.deleteMany({ userId: { $in: ids } }),
@@ -93,7 +80,7 @@ test('public endpoints are open and protected ones require a login', { skip }, a
   for (const [m, p] of [
     ['GET', '/api/orders'], ['POST', '/api/orders'], ['GET', '/api/positions'], ['GET', '/api/ledger'], ['GET', '/api/wallet'], ['POST', '/api/wallet/topup'],
     ['POST', '/api/portfolio/import'], ['POST', '/api/advisor/chat'], ['GET', '/api/advisor/context/AAPL'], ['POST', '/api/stocks/cache/clear'], ['GET', '/api/stocks/subscriptions'],
-    ['GET', '/api/chat/admin/rooms'], ['GET', '/api/chat/some-room'], ['GET', '/api/auth/me'],
+    ['GET', '/api/auth/me'],
   ]) {
     const r = await call(m, p, { body: m === 'POST' ? {} : undefined });
     assert.strictEqual(r.status, 401, `${m} ${p} should be 401, got ${r.status}`);
@@ -237,49 +224,17 @@ test('forged, tampered and orphaned tokens are rejected', { skip }, async () => 
   assert.strictEqual((await call('GET', '/api/auth/me', { token: orphan })).status, 401, 'valid signature but user does not exist');
 });
 
-test('admin-only routes refuse ordinary users, and chat rooms are private', { skip }, async () => {
+test('admin-only routes refuse ordinary users, and the removed support chat is gone', { skip }, async () => {
   const a = await registerAndLogin();
-  const b = await registerAndLogin();
   assert.strictEqual((await call('POST', '/api/stocks/cache/clear', { token: a.token, body: {} })).status, 403);
-  assert.strictEqual((await call('GET', '/api/chat/admin/rooms', { token: a.token })).status, 403);
-  assert.strictEqual((await call('GET', `/api/chat/${b.id}`, { token: a.token })).status, 403, 'cannot read another user\'s chat');
-  assert.strictEqual((await call('GET', `/api/chat/${a.id}`, { token: a.token })).status, 200);
+  assert.strictEqual((await call('GET', '/api/chat/admin/rooms', { token: a.token })).status, 404);
+  assert.strictEqual((await call('GET', `/api/chat/${a.id}`, { token: a.token })).status, 404);
 });
 
-test('chat sockets: identity comes from the token, rooms are private, admin room needs the admin role', { skip }, async () => {
-  const a = await registerAndLogin(uniqueEmail(), 'Alice Tester');
-  const b = await registerAndLogin(uniqueEmail(), 'Bob Tester');
-  const adminUser = await registerAndLogin(uniqueEmail(), 'Real Admin');
-  await User.updateOne({ _id: adminUser.id }, { $set: { role: 'admin' } });
-
-  const anon = await socketFor();
-  const sa = await socketFor(a.token);
-  const sb = await socketFor(b.token);
-  const sadmin = await socketFor(adminUser.token);
-
-  const heard = { anon: [], b: [], admin: [] };
-  anon.on('receive_message', (m) => heard.anon.push(m));
-  sb.on('receive_message', (m) => heard.b.push(m));
-  sadmin.on('receive_message', (m) => heard.admin.push(m));
-
-  anon.emit('join_admin'); anon.emit('join_chat', a.id);
-  sb.emit('join_admin'); sb.emit('join_chat', a.id);
-  sadmin.emit('join_admin');
-  sa.emit('join_chat', a.id);
-  await wait(500);
-
-  sa.emit('send_message', { roomId: 'someone-elses-room', senderId: b.id, senderName: 'Admin', text: 'hello from alice' });
-  anon.emit('send_message', { roomId: a.id, senderId: a.id, senderName: 'Alice Tester', text: 'anonymous spoof' });
-  await wait(1500);
-
-  assert.strictEqual(heard.anon.length, 0, 'unauthenticated sockets receive nothing');
-  assert.strictEqual(heard.b.length, 0, 'another user cannot listen to alice\'s room or the admin room');
-  assert.strictEqual(heard.admin.length, 1, 'the admin sees the message');
-  const saved = heard.admin[0];
-  assert.strictEqual(saved.senderId, a.id, 'sender id is taken from the token');
-  assert.strictEqual(saved.senderName, 'Alice Tester', 'sender name is taken from the account, not the client');
-  assert.strictEqual(saved.roomId, a.id, 'users can only write to their own room');
-  assert.strictEqual(await ChatMessage.countDocuments({ text: 'anonymous spoof' }), 0);
+test('unknown API paths answer with a JSON 404', { skip }, async () => {
+  const r = await call('GET', '/api/does-not-exist');
+  assert.strictEqual(r.status, 404);
+  assert.ok(r.data?.message);
 });
 
 test('price alert subscriptions are per user, validated and de-duplicated', { skip }, async () => {

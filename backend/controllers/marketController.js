@@ -1,4 +1,5 @@
 import { yahooFinance } from '../services/yahoo.js';
+import { log } from '../utils/logger.js';
 
 const SOURCE = 'Yahoo Finance';
 const OVERVIEW_TTL_MS = 60 * 1000;
@@ -41,7 +42,7 @@ const toRow = (q) => ({
 const hasPrice = (r) => r.price !== null && r.price > 0 && r.changePercent !== null;
 
 const unavailable = (res, what, err) => {
-  console.warn(`Market ${what} unavailable:`, err?.message);
+  log.warn(`Market ${what} unavailable:`, err?.message);
   return res.status(503).json({ code: 'DATA_UNAVAILABLE', message: `${what} data is temporarily unavailable.` });
 };
 

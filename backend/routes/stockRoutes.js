@@ -7,6 +7,7 @@ import Subscription from '../models/Subscription.js';
 import User from '../models/User.js';
 import { notifyUser } from '../services/notificationService.js';
 import { VALID_SYMBOL } from '../services/yahoo.js';
+import { log } from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -65,7 +66,7 @@ router.post('/subscriptions', protect, async (req, res) => {
     res.status(201).json({ message: `Successfully subscribed to alerts for ${symbol}`, subscription });
   } catch (err) {
     if (err?.code === 11000) return res.json({ message: `Already subscribed to ${symbol}` });
-    console.error('Subscription error:', err.message);
+    log.error('Subscription error:', err.message);
     res.status(500).json({ message: 'Server error subscribing to stock.' });
   }
 });

@@ -2,6 +2,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { protect } from '../middlewares/auth.js';
 import { AdvisorError, chat, getFacts } from '../services/advisorService.js';
+import { log } from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ const perUser = (max, message) => rateLimit({
 
 const fail = (res, err) => {
   if (err instanceof AdvisorError) return res.status(err.status).json({ code: err.code, message: err.message });
-  console.error('Advisor route error:', err.message);
+  log.error('Advisor route error:', err.message);
   return res.status(500).json({ code: 'SERVER_ERROR', message: 'The advisor is unavailable right now. Please try again.' });
 };
 

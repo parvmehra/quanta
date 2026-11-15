@@ -2,6 +2,7 @@ import express from 'express';
 import Watchlist from '../models/Watchlist.js';
 import { protect } from '../middlewares/auth.js';
 import { cleanSymbol } from '../controllers/stockDataController.js';
+import { log } from '../utils/logger.js';
 
 const router = express.Router();
 router.use(protect);
@@ -31,7 +32,7 @@ const handle = (fn) => async (req, res) => {
   try {
     await fn(req, res);
   } catch (err) {
-    console.error('Watchlist route error:', err.message);
+    log.error('Watchlist route error:', err.message);
     res.status(500).json({ message: 'Server error' });
   }
 };

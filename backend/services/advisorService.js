@@ -2,6 +2,7 @@ import axios from 'axios';
 import { yahooFinance } from './yahoo.js';
 import { loadChart, loadFundamentals, cleanSymbol } from '../controllers/stockDataController.js';
 import { sma, rsi } from '../utils/indicators.js';
+import { log } from '../utils/logger.js';
 
 export class AdvisorError extends Error {
   constructor(status, code, message) {
@@ -300,7 +301,7 @@ export async function chat(rawInput, deps = {}) {
       model = out.model || null;
     } catch (err) {
       reason = 'ai_error';
-      console.warn('AI advisor model call failed:', String(err.message).replace(apiKey, '<key>').slice(0, 200));
+      log.warn('AI advisor model call failed:', String(err.message).replace(apiKey, '<key>').slice(0, 200));
     }
   }
   if (!answer) answer = ruleBasedAnswer(facts, input.message);

@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import NotificationLog from '../models/NotificationLog.js';
 import { safeLogContent } from '../utils/logSafe.js';
+import { log } from '../utils/logger.js';
 
 let transporter = null;
 let isSimulated = false;
@@ -17,10 +18,10 @@ const initTransporter = async () => {
         },
       });
       isSimulated = false;
-      console.log(`📧 Nodemailer: Configured with Gmail (${process.env.GMAIL_USER})`);
+      log.info(`Nodemailer: Configured with Gmail (${process.env.GMAIL_USER})`);
       return;
     } catch (err) {
-      console.warn('Gmail transport init failed, falling back to simulated mode:', err.message);
+      log.warn('Gmail transport init failed, falling back to simulated mode:', err.message);
     }
   }
 
@@ -36,15 +37,15 @@ const initTransporter = async () => {
         },
       });
       isSimulated = false;
-      console.log(`📧 Nodemailer: Configured with custom SMTP provider (${process.env.SMTP_HOST})`);
+      log.info(`Nodemailer: Configured with custom SMTP provider (${process.env.SMTP_HOST})`);
       return;
     } catch (err) {
-      console.warn('SMTP transport init failed, falling back to simulated mode:', err.message);
+      log.warn('SMTP transport init failed, falling back to simulated mode:', err.message);
     }
   }
 
   isSimulated = true;
-  console.log('📧 Nodemailer: Running in Simulated Mode (logs to the database, codes returned in development)');
+  log.info('Nodemailer: Running in Simulated Mode (logs to the database, codes returned in development)');
 };
 
 initTransporter();
@@ -125,9 +126,9 @@ const logNotification = (userId, channel, eventType, recipient, title, message, 
       referenceId: referenceId || crypto.randomUUID(),
       createdAt: Date.now(),
     };
-    NotificationLog.create(log).catch((err) => console.error('Failed to save notification log:', err.message));
+    NotificationLog.create(log).catch((err) => log.error('Failed to save notification log:', err.message));
   } catch (err) {
-    console.error('Failed to save notification log:', err);
+    log.error('Failed to save notification log:', err);
   }
 };
 
@@ -144,8 +145,8 @@ export const sendMail = async ({ to, subject, html, text, userId = null, eventTy
     };
 
     if (isSimulated || !transporter) {
-      console.log(`\n📨 [SIMULATED EMAIL] To: ${to} | Subject: ${subject}`);
-      console.log(`Preview: ${text?.slice(0, 140)}...\n`);
+      log.info(`\n[SIMULATED EMAIL] To: ${to} | Subject: ${subject}`);
+      log.info(`Preview: ${text?.slice(0, 140)}...\n`);
       logNotification(userId, 'email', eventType, to, subject, text, 'SIMULATED', referenceId);
       return { success: true, simulated: true, messageId: 'sim_' + Date.now() };
     }
@@ -153,13 +154,13 @@ export const sendMail = async ({ to, subject, html, text, userId = null, eventTy
     const info = await transporter.sendMail(mailOptions);
     const previewUrl = nodemailer.getTestMessageUrl(info);
     if (previewUrl) {
-      console.log(`📬 Ethereal Email Preview: ${previewUrl}`);
+      log.info(`Ethereal Email Preview: ${previewUrl}`);
     }
 
     logNotification(userId, 'email', eventType, to, subject, text, 'SENT', referenceId);
     return { success: true, messageId: info.messageId, previewUrl };
   } catch (err) {
-    console.error('❌ Email sending failed:', err.message);
+    log.error('Email sending failed:', err.message);
     logNotification(userId, 'email', eventType, to, subject, text, 'FAILED', referenceId);
     return { success: false, error: err.message };
   }

@@ -5,6 +5,7 @@ import NotificationLog from '../models/NotificationLog.js';
 import { safeLogContent } from '../utils/logSafe.js';
 import { IS_PRODUCTION } from '../config/env.js';
 import { sixDigitCode, hashCode, safeEqualHex } from '../utils/codes.js';
+import { log } from '../utils/logger.js';
 
 let twilioClient = null;
 let hasTwilioCredentials = false;
@@ -17,14 +18,14 @@ export const initTwilio = () => {
     try {
       twilioClient = twilio(accountSid, authToken);
       hasTwilioCredentials = true;
-      console.log('📱 Twilio SMS: Initialized with verified credentials');
+      log.info('Twilio SMS: Initialized with verified credentials');
     } catch (err) {
-      console.error('Twilio initialization failed:', err.message);
+      log.error('Twilio initialization failed:', err.message);
       hasTwilioCredentials = false;
     }
   } else {
     hasTwilioCredentials = false;
-    console.log('📱 Twilio SMS: Running in Simulated Mode (logs to the database)');
+    log.info('Twilio SMS: Running in Simulated Mode (logs to the database)');
   }
 };
 
@@ -51,22 +52,22 @@ const logSms = (userId, eventType, recipient, message, status, referenceId = nul
       referenceId: referenceId || crypto.randomUUID(),
       createdAt: Date.now(),
     };
-    NotificationLog.create(log).catch((err) => console.error('Failed to log SMS notification:', err.message));
+    NotificationLog.create(log).catch((err) => log.error('Failed to log SMS notification:', err.message));
   } catch (err) {
-    console.error('Failed to log SMS notification:', err);
+    log.error('Failed to log SMS notification:', err);
   }
 };
 
 export const sendSms = async ({ to, message, userId = null, eventType = 'GENERAL', referenceId = null }) => {
   if (!isValidE164(to)) {
-    console.warn(`⚠️ Invalid E.164 format for phone: ${to}`);
+    log.warn(`Invalid E.164 format for phone: ${to}`);
     logSms(userId, eventType, to, message, 'FAILED_INVALID_NUMBER', referenceId);
     return { success: false, error: 'Invalid international phone number format (must be E.164, e.g. +14155552671)' };
   }
 
   if (!hasTwilioCredentials || !twilioClient) {
-    console.log(`\n📱 [SIMULATED SMS] To: ${to}`);
-    console.log(`Message: "${message}"\n`);
+    log.info(`\n[SIMULATED SMS] To: ${to}`);
+    log.info(`Message: "${message}"\n`);
     logSms(userId, eventType, to, message, 'SIMULATED', referenceId);
     return { success: true, simulated: true, sid: 'sim_sms_' + Date.now() };
   }
@@ -89,7 +90,7 @@ export const sendSms = async ({ to, message, userId = null, eventType = 'GENERAL
     logSms(userId, eventType, to, message, 'SENT', referenceId || res.sid);
     return { success: true, sid: res.sid };
   } catch (err) {
-    console.error('❌ Twilio SMS Error:', err.message);
+    log.error('Twilio SMS Error:', err.message);
     logSms(userId, eventType, to, message, 'FAILED', referenceId);
     return { success: false, error: err.message };
   }
@@ -129,7 +130,7 @@ export const sendPhoneVerificationOtp = async (user, phoneNumber) => {
 
   const isFallbackNeeded = !result.success || result.simulated;
   if (!result.success) {
-    console.warn(`⚠️ Twilio SMS dispatch failed (${result.error}). Providing fallback OTP: ${otpCode}`);
+    log.warn(`Twilio SMS dispatch failed (${result.error}). Providing fallback OTP: ${otpCode}`);
   }
 
   return {
